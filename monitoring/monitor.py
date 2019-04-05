@@ -7,6 +7,7 @@ import numpy as np
 import dask
 import re
 
+from astropy.io import fits
 from glob import glob
 from typing import Iterable
 from email.mime.text import MIMEText
@@ -26,6 +27,39 @@ def find_all_files(data_dir='/grp/hst/cos2/cosmo'):
     results_as_list = [file for file_list in results for file in file_list]
 
     return results_as_list
+
+
+def get_keywords_from_files(fitsfiles, keywords, extensions, exptype=None, names=None):
+    assert len(keywords) == len(extensions), 'Keywords and extensions arguments must be the same length.'
+
+    if names is not None:
+        assert len(names) == len(keywords), (
+            'Names argument must be the same length as keywords and extensions arguments'
+        )
+
+    @dask.delayed
+    def get_keyword_values(fitsfile, keys, exts, exp_type=None, new_names=None):
+        with fits.open(fitsfile) as file:
+            try:
+                if exptype and file[0].header['EXPTYPE'] != exp_type:
+                    return
+
+            except KeyError:
+                if exptype and file[0].header['OPMODE'] != exp_type:
+                    return
+
+            if new_names is not None:
+                return {
+                    name: file[ext].header[key] for key, ext, name in zip(
+                        keys, exts, new_names
+                    )
+                }
+
+            return {key: file[ext].header[key] for key, ext in zip(keys, exts)}
+
+    delayed_results = [get_keyword_values(fitsfile, keywords, extensions, exptype) for fitsfile in fitsfiles]
+
+    return [item for item in dask.compute(*delayed_results, scheduler='multiprocessing') if item is not None]
 
 
 class Email:
@@ -100,6 +134,8 @@ class Monitor:
 
         self.date = datetime.today()
 
+        self.name += f' {self.date.date().isoformat()}'
+
         if not self.output:
             self.output = f'{os.path.abspath(f"{self.name}_{self.date.date().isoformat()}.html")}'
 
@@ -117,7 +153,9 @@ class Monitor:
             self.figure = go.Figure()
 
         if self.labels:
-            self.hover_text = ['<br>'.join(list(row.astype(str))) for _, row in self.data[self.labels].iterrows()]
+            self.hover_text = pd.Series(
+                ['<br>'.join(list(row.astype(str))) for _, row in self.data[self.labels].iterrows()]
+            )
 
     def __str__(self):
         return self.name
@@ -233,6 +271,3 @@ class Monitor:
         )
 
         self.figure.add_trace(image_plot)
-
-    def subplot(self, plots):
-        self.figure.add_traces(plots)
