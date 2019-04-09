@@ -4,62 +4,11 @@ import pandas as pd
 import smtplib
 import os
 import numpy as np
-import dask
-import re
 
-from astropy.io import fits
-from glob import glob
 from typing import Iterable
 from email.mime.text import MIMEText
 from datetime import datetime
 from plotly import tools
-
-
-def find_all_files(data_dir='/grp/hst/cos2/cosmo'):
-    pattern = r'\d{5}'
-    programs = os.listdir(data_dir)
-
-    result = [
-        dask.delayed(glob)(os.path.join(data_dir, program, '*')) for program in programs if re.match(pattern, program)
-    ]
-
-    results = dask.compute(result)[0]
-    results_as_list = [file for file_list in results for file in file_list]
-
-    return results_as_list
-
-
-def get_keywords_from_files(fitsfiles, keywords, extensions, exptype=None, names=None):
-    assert len(keywords) == len(extensions), 'Keywords and extensions arguments must be the same length.'
-
-    if names is not None:
-        assert len(names) == len(keywords), (
-            'Names argument must be the same length as keywords and extensions arguments'
-        )
-
-    @dask.delayed
-    def get_keyword_values(fitsfile, keys, exts, exp_type=None, new_names=None):
-        with fits.open(fitsfile) as file:
-            try:
-                if exptype and file[0].header['EXPTYPE'] != exp_type:
-                    return
-
-            except KeyError:
-                if exptype and file[0].header['OPMODE'] != exp_type:
-                    return
-
-            if new_names is not None:
-                return {
-                    name: file[ext].header[key] for key, ext, name in zip(
-                        keys, exts, new_names
-                    )
-                }
-
-            return {key: file[ext].header[key] for key, ext in zip(keys, exts)}
-
-    delayed_results = [get_keyword_values(fitsfile, keywords, extensions, exptype) for fitsfile in fitsfiles]
-
-    return [item for item in dask.compute(*delayed_results, scheduler='multiprocessing') if item is not None]
 
 
 class Email:
@@ -101,14 +50,22 @@ class Email:
 class DataModel:
     def __init__(self):
         self.data = None
+
         self._data = self.get_data()
         self._to_pandas()
+
+        self.filtered_data = self.filter_data()
 
     def _to_pandas(self):
         self.data = pd.DataFrame.from_dict(self._data)
 
     def get_data(self):
         raise NotImplementedError('"get_data" method required for use.')
+
+    def filter_data(self):
+        pass
+
+# TODO: Move filter_data to Monitor
 
 
 class Monitor:
@@ -130,6 +87,7 @@ class Monitor:
         self.hover_text = None
 
         self._data_model = self.data_model()
+
         self._check_plottype()
 
         self.date = datetime.today()
@@ -153,9 +111,9 @@ class Monitor:
             self.figure = go.Figure()
 
         if self.labels:
-            self.hover_text = pd.Series(
-                ['<br>'.join(list(row.astype(str))) for _, row in self.data[self.labels].iterrows()]
-            )
+            self.data['hover_text'] = [
+                '<br>'.join(list(row.astype(str))) for _, row in self.data[self.labels].iterrows()
+            ]
 
     def __str__(self):
         return self.name
@@ -172,11 +130,20 @@ class Monitor:
 
     @property
     def data(self):
+        if self._data_model.filtered_data is not None:
+            return self._data_model.filtered_data
+
         return self._data_model.data
 
     @property
     def basic_layout(self):
-        return go.Layout(title=self.name, hovermode='closest')
+        return go.Layout(
+            title=self.name,
+            hovermode='closest',
+            xaxis=dict(title=self.x.name),
+            yaxis=dict(title=self.y.name),
+
+        )
 
     def basic_scatter(self):
         self._basic_scatter('markers')
@@ -236,7 +203,7 @@ class Monitor:
             marker=dict(
                 color=self.z,
                 colorscale='Viridis',
-                colorbar=dict(len=0.75),
+                colorbar=dict(len=0.75, title=self.z.name),
                 showscale=True
             ) if self.z is not None else None,
             name='Monitor',
