@@ -7,8 +7,13 @@ from astropy.io import fits
 
 
 class FileFinder:
-    def __init__(self, file_pattern, keywords, extensions, spt_keywords=None, spt_extensions=None, exptype=None):
-        self.files = find_files(file_pattern)
+    def __init__(self, source_dr, file_pattern, keywords, extensions,
+                 spt_keywords=None,
+                 spt_extensions=None,
+                 exptype=None):
+
+        self.source = source_dr
+        self.files = find_files(file_pattern, data_dir=source_dr)
         self.keywords = keywords
         self.extensions = extensions
         self.spt_keywords = spt_keywords
@@ -74,12 +79,13 @@ def get_keyword_values(fitsfile, keys, exts, exp_type=None, spt_file=None, spt_k
     return results
 
 
-def find_files(file_pattern, data_dir='/grp/hst/cos2/cosmo'):
+def find_files(file_pattern, data_dir):
     pattern = r'\d{5}'
     programs = os.listdir(data_dir)
 
     result = [
-        dask.delayed(glob)(os.path.join(data_dir, program, file_pattern)) for program in programs if re.match(pattern, program)
+        dask.delayed(glob)(os.path.join(data_dir, program, file_pattern))
+        for program in programs if re.match(pattern, program)
     ]
 
     results = dask.compute(result)[0]

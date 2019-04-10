@@ -3,6 +3,8 @@ import numpy as np
 from monitoring.monitor import DataModel
 from monitoring.file_data import FileFinder
 
+SOURCE = '/grp/hst/cos2/cosmo'
+
 
 def dgestar_to_fgs(results):
     for item in results:
@@ -10,7 +12,7 @@ def dgestar_to_fgs(results):
 
 
 def get_acq_data(acq_keys, acq_extensions, spt_keys, spt_extensions, exptype):
-    finder = FileFinder('*rawacq*', acq_keys, acq_extensions, spt_keys, spt_extensions, exptype)
+    finder = FileFinder(SOURCE, '*rawacq*', acq_keys, acq_extensions, spt_keys, spt_extensions, exptype)
     data_results = finder.data_from_files()
 
     if 'DGESTAR' in spt_keys:
@@ -68,18 +70,8 @@ class AcqImageV2V3Model(DataModel):
             return v2, v3
 
         acq_keywords = (
-            'ACQSLEWX',
-            'ACQSLEWY',
-            'EXPSTART',
-            'ROOTNAME',
-            'PROPOSID',
-            'OBSTYPE',
-            'NEVENTS',
-            'SHUTTER',
-            'LAMPEVNT',
-            'ACQSTAT',
-            'EXTENDED',
-            'LINENUM'
+            'ACQSLEWX', 'ACQSLEWY', 'EXPSTART', 'ROOTNAME', 'PROPOSID', 'OBSTYPE', 'NEVENTS', 'SHUTTER', 'LAMPEVNT',
+            'ACQSTAT', 'EXTENDED', 'LINENUM'
         )
         acq_extensions = (0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0)
 

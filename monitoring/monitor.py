@@ -102,9 +102,9 @@ class Monitor:
         if os.path.isdir(self.output):
             self.output = os.path.join(self.output, f"{self._filename}.html")
 
-        self.define_plot()
         self.results = self.track()
         self.outliers = self.find_outliers()
+        self.define_plot()
 
         if self.subplots:
             self.figure = tools.make_subplots(*self.subplot_layout)
