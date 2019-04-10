@@ -211,8 +211,6 @@ class AcqImageFGSMonitor(Monitor):
         self.figure['layout'].update(layout)
 
 
-# TODO: Figure out how to add the vertical lines to both subplots; One way to do this may be to add the shapes to the
-#  layout independent of the buttons
 class AcqImageV2V3Monitor(Monitor):
     name = 'V2V3 Offset Monitor'
     data_model = AcqImageV2V3Model
@@ -364,15 +362,15 @@ class AcqImageV2V3Monitor(Monitor):
             {
                 'type': 'line',
                 'x0': self.convert_day_of_year(value, mjd=True),
-                'y0': -2,
+                'y0': self.figure['layout'][yaxis]['domain'][0],
                 'x1': self.convert_day_of_year(value, mjd=True),
-                'y1': 2,
+                'y1': self.figure['layout'][yaxis]['domain'][1],
+                'xref': xref,
                 'yref': 'paper',
                 'line': {
                     'width': 3,
-                    'name': key
                 }
-            } for key, value in self.fgs_events.items()
+            } for value in self.fgs_events.values() for xref, yaxis in zip(['x1', 'x2'], ['yaxis1', 'yaxis2'])
         ]
 
         f1_visibility = list(repeat(True, len(traces['F1']))) + list(repeat(False, len(traces['F2'])))
@@ -387,7 +385,7 @@ class AcqImageV2V3Monitor(Monitor):
                         method='update',
                         args=[
                             {'visible': f1_visibility},
-                            {'title': 'FGS1 V2V3 Slew vs Time', 'shapes': lines + lines}
+                            {'title': 'FGS1 V2V3 Slew vs Time'}
                         ]
                     ),
                     dict(
@@ -395,14 +393,14 @@ class AcqImageV2V3Monitor(Monitor):
                         method='update',
                         args=[
                             {'visible': f2_visibility},
-                            {'title': 'FGS2 V2V3 Slew vs Time', 'shapes': lines + lines}
+                            {'title': 'FGS2 V2V3 Slew vs Time'}
                         ]
                     ),
                 ]
             ),
         ]
 
-        layout = go.Layout(updatemenus=updatemenus, hovermode='closest')
+        layout = go.Layout(updatemenus=updatemenus, hovermode='closest', shapes=lines)
         self.figure['layout'].update(layout)
 
 
@@ -537,5 +535,5 @@ class AcqPeakxdMonitor(Monitor):
 
 
 if __name__ == '__main__':
-    monitor = AcqPeakxdMonitor()
+    monitor = AcqImageV2V3Monitor()
     monitor.monitor()
