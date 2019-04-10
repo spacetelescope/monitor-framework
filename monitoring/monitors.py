@@ -7,7 +7,7 @@ from itertools import repeat
 
 
 from monitoring.monitor import Monitor
-from monitoring.data_models import AcqImageModel, AcqImageV2V3Model, AcqPeakdModel
+from monitoring.data_models import AcqImageModel, AcqImageV2V3Model, AcqPeakdModel, AcqPeakxdModel
 
 
 class AcqImageMonitor(Monitor):
@@ -112,7 +112,7 @@ class AcqImageFGSMonitor(Monitor):
     output = '/Users/jwhite/Desktop/test3.html'
 
     def track(self):
-        groups = self.data.sort_values('dom_fgs').reset_index(drop=True).groupby('dom_fgs')
+        groups = self.data.groupby('dom_fgs')
         return groups, -groups.ACQSLEWX.mean(), -groups.ACQSLEWY.mean()
 
     def plot(self):
@@ -137,7 +137,7 @@ class AcqImageFGSMonitor(Monitor):
                         showscale=True,
                     ),
                     name=name,
-                    text=self.hover_text[group.index],
+                    text=group.hover_text,
                     visible=False
                 )
             )
@@ -146,9 +146,9 @@ class AcqImageFGSMonitor(Monitor):
             fgs: [
                 {
                     'type': 'line',
-                    'x0': -mean_x[fgs],
+                    'x0': mean_x[fgs],
                     'y0': 0,
-                    'x1': -mean_x[fgs],
+                    'x1': mean_x[fgs],
                     'y1': 1,
                     'yref': 'paper',
                     'line': {
@@ -160,9 +160,9 @@ class AcqImageFGSMonitor(Monitor):
                 {
                     'type': 'line',
                     'x0': 0,
-                    'y0': -mean_y[fgs],
+                    'y0': mean_y[fgs],
                     'x1': 1,
-                    'y1': -mean_y[fgs],
+                    'y1': mean_y[fgs],
                     'xref': 'paper',
                     'line': {
                         'color': 'red',
@@ -211,7 +211,8 @@ class AcqImageFGSMonitor(Monitor):
         self.figure['layout'].update(layout)
 
 
-# TODO: Figure out how to add the vertical lines to both subplots
+# TODO: Figure out how to add the vertical lines to both subplots; One way to do this may be to add the shapes to the
+#  layout independent of the buttons
 class AcqImageV2V3Monitor(Monitor):
     name = 'V2V3 Offset Monitor'
     data_model = AcqImageV2V3Model
@@ -264,8 +265,25 @@ class AcqImageV2V3Monitor(Monitor):
 
         return fit, fit(x)
 
+    def filter_data(self):
+
+        index = np.where(
+            (self.data.OBSTYPE == 'IMAGING') &
+            (self.data.NEVENTS >= 2000) &
+            (np.sqrt(self.data.V2SLEW ** 2 + self.data.V3SLEW ** 2) < 2) &
+            (self.data.SHUTTER == 'Open') &
+            (self.data.LAMPEVNT >= 500) &
+            (self.data.ACQSTAT == 'Success') &
+            (self.data.EXTENDED == 'NO')
+        )
+
+        partially_filtered = self.data.iloc[index]
+        filtered_df = partially_filtered[partially_filtered.LINENUM.str.endswith('1')]
+
+        return filtered_df
+
     def track(self):
-        groups = self.data.groupby('dom_fgs')
+        groups = self.filtered_data.groupby('dom_fgs')
 
         last_updated_results = dict()
         for name, group in groups:
@@ -274,7 +292,7 @@ class AcqImageV2V3Monitor(Monitor):
 
             t_start = self.convert_day_of_year(self.break_points[name][-1][0], mjd=True)
 
-            df = self.data[self.data.EXPSTART >= t_start]
+            df = self.filtered_data[self.filtered_data.EXPSTART >= t_start]
 
             v2_line_fit = self.line(df.EXPSTART, df.V2SLEW)
             v3_line_fit = self.line(df.EXPSTART, df.V3SLEW)
@@ -396,7 +414,7 @@ class AcqPeakdMonitor(Monitor):
 
     def track(self):
         groups = self.data.groupby('dom_fgs')
-        scatter = groups.ACQSLEWX.mean()
+        scatter = groups.ACQSLEWX.std()
 
         return groups, scatter
 
@@ -428,34 +446,87 @@ class AcqPeakdMonitor(Monitor):
 
             traces.append(scatter)
 
+        fgs_labels = ['FGS1', 'FGS2', 'FGS3']
+        visibility = [np.roll([True, False, False], index) for index in range(len(fgs_labels))]
+        title = 'AcqPeakd Slew vs Time'
+
         updatemenus = [
             dict(
                 active=10,
                 buttons=[
                     dict(
-                        label='FGS1',
+                        label=fgs,
                         method='update',
                         args=[
-                            {'visible': [True, False, False]},
-                            {'title': 'FGS1 AcqPeakd Slew vs Time'}
+                            {'visible': visible},
+                            {'title': f'{fgs} {title}'}
                         ]
+                    ) for fgs, visible in zip(fgs_labels, visibility)
+                ]
+            )
+        ]
+
+        layout = go.Layout(updatemenus=updatemenus, hovermode='closest')
+        self.figure.add_traces(traces)
+        self.figure['layout'].update(layout)
+
+
+class AcqPeakxdMonitor(Monitor):
+    name = 'AcqPeakxd Monitor'
+    data_model = AcqPeakxdModel
+    labels = ['ROOTNAME', 'PROPOSID']
+    output = '/Users/jwhite/Desktop/acq_peakxd.html'
+
+    def track(self):
+        groups = self.data.groupby('dom_fgs')
+        scatter = groups.ACQSLEWY.std()
+
+        return groups, scatter
+
+    def plot(self):
+        fgs_groups, std_results = self.results
+
+        traces = []
+        for name, group in fgs_groups:
+            scatter = go.Scatter(
+                x=group.EXPSTART,
+                y=-group.ACQSLEWY,
+                mode='markers',
+                text=group.hover_text,
+                visible=False,
+                marker=dict(
+                    color=group.LIFE_ADJ,
+                    colorscale='Viridis',
+                    colorbar=dict(
+                        len=0.75,
+                        tickmode='array',
+                        nticks=len(group.LIFE_ADJ.unique()),
+                        tickvals=group.LIFE_ADJ.unique(),
+                        ticktext=[f'LP{l}' for l in group.LIFE_ADJ.unique()]
                     ),
+                    showscale=True,
+                ),
+                name=name,
+            )
+
+            traces.append(scatter)
+
+        fgs_labels = ['FGS1', 'FGS2', 'FGS3']
+        visibility = [np.roll([True, False, False], index) for index in range(len(fgs_labels))]
+        title = 'AcqPeakxd Slew vs Time'
+
+        updatemenus = [
+            dict(
+                active=10,
+                buttons=[
                     dict(
-                        label='FGS2',
+                        label=fgs,
                         method='update',
                         args=[
-                            {'visible': [False, True, False]},
-                            {'title': 'FGS2 AcqPeakd Slew vs Time'}
+                            {'visible': visible},
+                            {'title': f'{fgs} {title}'}
                         ]
-                    ),
-                    dict(
-                        label='FGS3',
-                        method='update',
-                        args=[
-                            {'visible': [False, False, True]},
-                            {'title': 'FGS3 AcqPeakd Slew vs Time'}
-                        ]
-                    )
+                    ) for fgs, visible in zip(fgs_labels, visibility)
                 ]
             )
         ]
@@ -466,5 +537,5 @@ class AcqPeakdMonitor(Monitor):
 
 
 if __name__ == '__main__':
-    monitor = AcqPeakdMonitor()
+    monitor = AcqPeakxdMonitor()
     monitor.monitor()

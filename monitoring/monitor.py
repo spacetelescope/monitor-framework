@@ -54,18 +54,11 @@ class DataModel:
         self._data = self.get_data()
         self._to_pandas()
 
-        self.filtered_data = self.filter_data()
-
     def _to_pandas(self):
         self.data = pd.DataFrame.from_dict(self._data)
 
     def get_data(self):
         raise NotImplementedError('"get_data" method required for use.')
-
-    def filter_data(self):
-        pass
-
-# TODO: Move filter_data to Monitor
 
 
 class Monitor:
@@ -86,19 +79,28 @@ class Monitor:
         self.info_keys = None
         self.hover_text = None
 
+        self._check_required()
+        self._check_plottype()
+
         self._data_model = self.data_model()
 
-        self._check_plottype()
+        if self.labels:
+            self.data['hover_text'] = [
+                '<br>'.join(list(row.astype(str))) for _, row in self.data[self.labels].iterrows()
+            ]
+
+        self.filtered_data = self.filter_data()
 
         self.date = datetime.today()
 
-        self.name += f' {self.date.date().isoformat()}'
+        self.name += f': {self.date.date().isoformat()}'
+        self._filename = '_'.join(self.name.split(': '))
 
         if not self.output:
-            self.output = f'{os.path.abspath(f"{self.name}_{self.date.date().isoformat()}.html")}'
+            self.output = f'{os.path.abspath(f"{self._filename}.html")}'
 
-        if not self.name:
-            raise KeyError('Monitor name not set. Please set the monitor name.')
+        if os.path.isdir(self.output):
+            self.output = os.path.join(self.output, f"{self._filename}.html")
 
         self.define_plot()
         self.results = self.track()
@@ -109,11 +111,6 @@ class Monitor:
 
         else:
             self.figure = go.Figure()
-
-        if self.labels:
-            self.data['hover_text'] = [
-                '<br>'.join(list(row.astype(str))) for _, row in self.data[self.labels].iterrows()
-            ]
 
     def __str__(self):
         return self.name
@@ -128,11 +125,12 @@ class Monitor:
                 f'constructing a custom plot'
             )
 
+    def _check_required(self):
+        if self.name is None or self.data_model is None:
+            raise KeyError('"name" and "data_model" attributes must be defined in a monitor.')
+
     @property
     def data(self):
-        if self._data_model.filtered_data is not None:
-            return self._data_model.filtered_data
-
         return self._data_model.data
 
     @property
@@ -173,6 +171,9 @@ class Monitor:
         else:
             pass
 
+    def filter_data(self):
+        pass
+
     def monitor(self):
         self.plot()
         off.plot(self.figure, filename=self.output, auto_open=False)
@@ -207,7 +208,7 @@ class Monitor:
                 showscale=True
             ) if self.z is not None else None,
             name='Monitor',
-            text=self.hover_text,
+            text=self.data.hover_text,
         )
 
         if self.outliers is not None:
@@ -217,7 +218,7 @@ class Monitor:
                 mode='markers',
                 marker=dict(color='red'),
                 name='Outliers',
-                text=self.hover_text[self.outliers],
+                text=self.data.hover_text[self.outliers],
             )
 
             self.figure.add_traces([scatter, outliers])

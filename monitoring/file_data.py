@@ -6,72 +6,83 @@ from glob import glob
 from astropy.io import fits
 
 
-def keywords_from_acqs_spts(acq_keywords, acq_extensions, spt_keywords, spt_extensions, exptype=None):
-    all_cos_files = find_all_files()
+class FileFinder:
+    def __init__(self, file_pattern, keywords, extensions, spt_keywords=None, spt_extensions=None, exptype=None):
+        self.files = find_files(file_pattern)
+        self.keywords = keywords
+        self.extensions = extensions
+        self.spt_keywords = spt_keywords
+        self.spt_extensions = spt_extensions
+        self.exptype = exptype
 
-    rawacqs = [item for item in all_cos_files if 'rawacq' in item]
+        self._check_lengths(self.keywords, self.extensions)
 
-    spts = []
-    for acq in rawacqs:
-        path, name = os.path.split(acq)
-        spt_name = '_'.join([name.split('_')[0], 'spt.fits.gz'])
-        spts.append(os.path.join(path, spt_name))
+        if self.spt_keywords is not None:
+            self._check_lengths(spt_keywords, spt_extensions)
 
-    rawacqs.sort(key=os.path.basename), spts.sort(key=os.path.basename)
+    @staticmethod
+    def _check_lengths(keywords, extensions):
+        try:
+            assert len(keywords) == len(extensions), 'Input keywords and extensions must be the same length'
 
-    acq_results = get_keywords_from_files(rawacqs, acq_keywords, acq_extensions, exptype=exptype)
-    spt_results = get_keywords_from_files(spts, spt_keywords, spt_extensions, exptype=exptype)
+        except TypeError:
+            raise TypeError('Input keywords must have accompanying extensions and must be the same length')
 
-    for acq_dict, spt_dict in zip(acq_results, spt_results):
-        acq_dict.update(spt_dict)
+    def data_from_files(self):
+        delayed_results = []
 
-    del spt_results
+        for file in self.files:
+            if self.spt_keywords is not None:
+                path, name = os.path.split(file)
+                spt_name = '_'.join([name.split('_')[0], 'spt.fits.gz'])
+                spt_file = os.path.join(path, spt_name)
 
-    return acq_results
+                if not os.path.exists(spt_file):
+                    continue
+
+            else:
+                spt_file = None
+
+            delayed_results.append(
+                get_keyword_values(
+                    file,
+                    self.keywords,
+                    self.extensions,
+                    self.exptype,
+                    spt_file,
+                    self.spt_keywords,
+                    self.spt_extensions
+                )
+            )
+
+        return [item for item in dask.compute(*delayed_results, scheduler='multiprocessing') if item is not None]
 
 
-def find_all_files(data_dir='/grp/hst/cos2/cosmo'):
+@dask.delayed
+def get_keyword_values(fitsfile, keys, exts, exp_type=None, spt_file=None, spt_keys=None, spt_exts=None):
+    results = dict()
+    with fits.open(fitsfile) as file:
+        if exp_type and file[0].header['EXPTYPE'] != exp_type:
+            return
+
+        results.update({key: file[ext].header[key] for key, ext in zip(keys, exts)})
+
+    if spt_file:
+        with fits.open(spt_file) as spt:
+            results.update({key: spt[ext].header[key] for key, ext in zip(spt_keys, spt_exts)})
+
+    return results
+
+
+def find_files(file_pattern, data_dir='/grp/hst/cos2/cosmo'):
     pattern = r'\d{5}'
     programs = os.listdir(data_dir)
 
     result = [
-        dask.delayed(glob)(os.path.join(data_dir, program, '*')) for program in programs if re.match(pattern, program)
+        dask.delayed(glob)(os.path.join(data_dir, program, file_pattern)) for program in programs if re.match(pattern, program)
     ]
 
     results = dask.compute(result)[0]
     results_as_list = [file for file_list in results for file in file_list]
 
     return results_as_list
-
-
-def get_keywords_from_files(fitsfiles, keywords, extensions, exptype=None, names=None):
-    assert len(keywords) == len(extensions), 'Keywords and extensions arguments must be the same length.'
-
-    if names is not None:
-        assert len(names) == len(keywords), (
-            'Names argument must be the same length as keywords and extensions arguments'
-        )
-
-    @dask.delayed
-    def get_keyword_values(fitsfile, keys, exts, exp_type=None, new_names=None):
-        with fits.open(fitsfile) as file:
-            try:
-                if exptype and file[0].header['EXPTYPE'] != exp_type:
-                    return
-
-            except KeyError:
-                if exptype and file[0].header['OPMODE'] != exp_type:
-                    return
-
-            if new_names is not None:
-                return {
-                    name: file[ext].header[key] for key, ext, name in zip(
-                        keys, exts, new_names
-                    )
-                }
-
-            return {key: file[ext].header[key] for key, ext in zip(keys, exts)}
-
-    delayed_results = [get_keyword_values(fitsfile, keywords, extensions, exptype) for fitsfile in fitsfiles]
-
-    return [item for item in dask.compute(*delayed_results, scheduler='multiprocessing') if item is not None]
