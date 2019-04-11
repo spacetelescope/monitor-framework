@@ -24,9 +24,11 @@ class AcqImageMonitor(Monitor):
     }
 
     def track(self):
+        """Return the magnitude of the slew offset."""
         return np.sqrt(self.data.ACQSLEWX ** 2 + self.data.ACQSLEWY ** 2)
 
     def find_outliers(self):
+        """Return mask defining outliers as acqs whose slew is greater than 2 arcseconds."""
         return self.results >= 2
 
     def notification_string(self):
