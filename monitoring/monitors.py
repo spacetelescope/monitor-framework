@@ -38,7 +38,6 @@ class AcqImageMonitor(Monitor):
         self.x = -self.data.ACQSLEWX
         self.y = -self.data.ACQSLEWY
         self.z = self.data.EXPSTART
-        self.plottype = 'scatter'
 
 
 class AcqImageSlewMonitor(Monitor):
@@ -127,7 +126,7 @@ class AcqImageSlewMonitor(Monitor):
                         method='update',
                         args=[
                             {'visible': visibility[fgs]},
-                            {'title': f'{label} Slew vs Time'}
+                            {'title': f'{label} Slew vs Time {self.date.date().isoformat()}'}
                         ]
                     ) for label, fgs in zip(['FGS1', 'FGS2', 'FGS3'], ['F1', 'F2', 'F3'])
                 ]
