@@ -86,7 +86,9 @@ class Monitor:
 
         if self.labels:
             self.data['hover_text'] = [
-                '<br>'.join(list(row.astype(str))) for _, row in self.data[self.labels].iterrows()
+                '<br>'.join(
+                    str(row).replace('\n', '<br>').split('<br>')[:-1]
+                ) for _, row in self.data[self.labels].iterrows()
             ]
 
         self.filtered_data = self.filter_data()
@@ -143,22 +145,6 @@ class Monitor:
 
         )
 
-    def basic_scatter(self):
-        self._basic_scatter('markers')
-
-    def basic_line(self):
-        self._basic_scatter('lines')
-
-    def basic_image(self):
-        self._basic_image()
-
-    def notify(self, body):
-        email = Email(self.notification_settings['username'], self.name, body, self.notification_settings['recipients'])
-        email.send()
-
-    def find_outliers(self):
-        pass
-
     def track(self):
         raise NotImplementedError('Monitor must track something.')
 
@@ -171,8 +157,18 @@ class Monitor:
         else:
             pass
 
+    def find_outliers(self):
+        pass
+
     def filter_data(self):
         pass
+
+    def define_plot(self):
+        pass
+
+    def notify(self, body):
+        email = Email(self.notification_settings['username'], self.name, body, self.notification_settings['recipients'])
+        email.send()
 
     def monitor(self):
         self.plot()
@@ -181,8 +177,14 @@ class Monitor:
         if self.notification_settings and self.notification_settings['active'] is True:
             self.notify(self.notification_string())
 
-    def define_plot(self):
-        pass
+    def basic_scatter(self):
+        self._basic_scatter('markers')
+
+    def basic_line(self):
+        self._basic_scatter('lines')
+
+    def basic_image(self):
+        self._basic_image()
 
     def plot(self):
         if self.plottype == 'scatter':

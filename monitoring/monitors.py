@@ -50,58 +50,93 @@ class AcqImageSlewMonitor(Monitor):
     labels = ['ROOTNAME', 'PROPOSID']
 
     def track(self):
-        xline = np.poly1d(np.polyfit(self.data.EXPSTART, self.data.ACQSLEWX, 1))
-        yline = np.poly1d(np.polyfit(self.data.EXPSTART, self.data.ACQSLEWY, 1))
-        return xline(self.data.EXPSTART), yline(self.data.EXPSTART), xline, yline
+        groups = self.data.groupby('dom_fgs')
+
+        fit_results = dict()
+        for name, group in groups:
+            xline = np.poly1d(np.polyfit(group.EXPSTART, -group.ACQSLEWX, 1))
+            yline = np.poly1d(np.polyfit(group.EXPSTART, -group.ACQSLEWY, 1))
+
+            fit_results[name] = (xline(group.EXPSTART), yline(group.EXPSTART), xline, yline)
+
+        return groups, fit_results
 
     def plot(self):
-        xline, yline, xfit, yfit = self.results
+        groups, fit_results = self.results
 
-        x_scatter = go.Scatter(
-            x=self.data.EXPSTART,
-            y=self.data.ACQSLEWX,
-            name='Slew X',
-            mode='markers',
-            text=self.hover_text
+        traces = []
+        rows = []
+        cols = []
+        visibility = {key: [] for key in groups.groups.keys()}
+        for name, group in groups:
+            xline, yline, xfit, yfit = fit_results[name]
 
-        )
+            x_scatter = go.Scatter(
+                x=group.EXPSTART,
+                y=-group.ACQSLEWX,
+                name=f'{name} Slew X',
+                mode='markers',
+                text=group.hover_text,
+                visible=False
 
-        y_scatter = go.Scatter(
-            x=self.data.EXPSTART,
-            y=self.data.ACQSLEWY,
-            name='Slew Y',
-            mode='markers',
-            text=self.hover_text
-        )
+            )
 
-        xline_fit = go.Scatter(
-            x=self.data.EXPSTART,
-            y=xline,
-            mode='lines',
-            name=f'Fit:\nslope: {xfit[1]:.5f}\nintercept: {xfit[0]:.3f}'
-        )
+            y_scatter = go.Scatter(
+                x=group.EXPSTART,
+                y=-group.ACQSLEWY,
+                name=f'{name} Slew Y',
+                mode='markers',
+                text=group.hover_text,
+                visible=False
+            )
 
-        yline_fit = go.Scatter(
-            x=self.data.EXPSTART,
-            y=yline,
-            mode='lines',
-            name=f'Fit:\nslop: {yfit[1]:.5f}\nintercept: {yfit[0]:.3f}'
-        )
+            xline_fit = go.Scatter(
+                x=group.EXPSTART,
+                y=xline,
+                mode='lines',
+                name=f'Fit:\nslope: {xfit[1]:.5f}\nintercept: {xfit[0]:.3f}',
+                visible=False
+            )
 
-        layout = go.Layout(
-            title=self.name,
-            xaxis1=dict(title=self.data.EXPSTART.name),
-            xaxis2=dict(title=self.data.EXPSTART.name),
-            yaxis1=dict(title=self.data.ACQSLEWX.name),
-            yaxis2=dict(title=self.data.ACQSLEWY.name)
-        )
+            yline_fit = go.Scatter(
+                x=group.EXPSTART,
+                y=yline,
+                mode='lines',
+                name=f'Fit:\nslope: {yfit[1]:.5f}\nintercept: {yfit[0]:.3f}',
+                visible=False
+            )
 
-        self.figure.add_traces(
-            [x_scatter, y_scatter, xline_fit, yline_fit],
-            rows=[1, 2, 1, 2],
-            cols=[1, 1, 1, 1]
-        )
+            traces.extend([x_scatter, y_scatter, xline_fit, yline_fit])
 
+            rows.extend([1, 2, 1, 2])
+            cols.extend([1, 1, 1, 1])
+
+            for key in visibility.keys():
+                if key == name:
+                    visibility[key].extend([True, True, True, True])
+
+                else:
+                    visibility[key].extend([False, False, False, False])
+
+        updatemenus = [
+            dict(
+                active=15,
+                buttons=[
+                    dict(
+                        label=label,
+                        method='update',
+                        args=[
+                            {'visible': visibility[fgs]},
+                            {'title': f'{label} Slew vs Time'}
+                        ]
+                    ) for label, fgs in zip(['FGS1', 'FGS2', 'FGS3'], ['F1', 'F2', 'F3'])
+                ]
+            ),
+        ]
+
+        layout = go.Layout(updatemenus=updatemenus, hovermode='closest')
+
+        self.figure.add_traces(traces, rows=rows, cols=cols)
         self.figure['layout'].update(layout)
 
 
@@ -532,3 +567,8 @@ class AcqPeakxdMonitor(Monitor):
         layout = go.Layout(updatemenus=updatemenus, hovermode='closest')
         self.figure.add_traces(traces)
         self.figure['layout'].update(layout)
+
+
+if __name__ == '__main__':
+    monitor = AcqImageSlewMonitor()
+    monitor.monitor()
