@@ -9,6 +9,8 @@ from itertools import repeat
 from monitoring.monitor import Monitor
 from monitoring.data_models import AcqImageModel, AcqImageV2V3Model, AcqPeakdModel, AcqPeakxdModel
 
+COS_MONITORING = '/grp/hst/cos2/monitoring'
+
 
 class AcqImageMonitor(Monitor):
     name = 'AcqImage Monitor'
@@ -47,7 +49,7 @@ class AcqImageSlewMonitor(Monitor):
     data_model = AcqImageModel
     subplots = True
     subplot_layout = (2, 1)
-    output = '/Users/jwhite/Desktop/test2.html'
+    output = COS_MONITORING
     labels = ['ROOTNAME', 'PROPOSID']
 
     def track(self):
@@ -145,7 +147,7 @@ class AcqImageFGSMonitor(Monitor):
     name = 'AcqImage FGS Monitor'
     data_model = AcqImageModel
     labels = ['ROOTNAME', 'PROPOSID']
-    output = '/Users/jwhite/Desktop/test3.html'
+    output = COS_MONITORING
 
     def track(self):
         groups = self.data.groupby('dom_fgs')
@@ -253,7 +255,7 @@ class AcqImageV2V3Monitor(Monitor):
     labels = ['ROOTNAME', 'PROPOSID']
     subplots = True
     subplot_layout = (2, 1)
-    output = '/Users/jwhite/Desktop/v2v3_test.html'
+    output = COS_MONITORING
 
     break_points = {
         'F1': [
@@ -444,7 +446,7 @@ class AcqPeakdMonitor(Monitor):
     name = 'AcqPeakd Monitor'
     data_model = AcqPeakdModel
     labels = ['ROOTNAME', 'PROPOSID']
-    output = '/Users/jwhite/Desktop/acq_peakd.html'
+    output = COS_MONITORING
 
     def track(self):
         groups = self.data.groupby('dom_fgs')
@@ -509,7 +511,7 @@ class AcqPeakxdMonitor(Monitor):
     name = 'AcqPeakxd Monitor'
     data_model = AcqPeakxdModel
     labels = ['ROOTNAME', 'PROPOSID']
-    output = '/Users/jwhite/Desktop/acq_peakxd.html'
+    output = COS_MONITORING
 
     def track(self):
         groups = self.data.groupby('dom_fgs')
@@ -571,5 +573,6 @@ class AcqPeakxdMonitor(Monitor):
 
 
 if __name__ == '__main__':
-    monitor = AcqImageSlewMonitor()
-    monitor.monitor()
+    for monitor in [AcqImageSlewMonitor, AcqImageFGSMonitor, AcqImageV2V3Monitor, AcqPeakdMonitor, AcqPeakxdMonitor]:
+        active = monitor()
+        active.monitor()

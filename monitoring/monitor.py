@@ -10,10 +10,10 @@ from datetime import datetime
 from plotly import tools
 from typing import Union, List, Dict, Iterable, Any
 
-ROW_DATA = List[Dict]
-COL_DATA = Dict[str: List]
+ROW_DATA = List[dict]
+COL_DATA = Dict[str, list]
 VALID_GET = Union[ROW_DATA, COL_DATA]
-EMAIL_TO = Union[str, Iterable[str]]
+EMAIL_TO = Union[str, list]
 
 
 class Email:
@@ -154,6 +154,7 @@ class Monitor:
         self.z = None
         self.info_keys = None
         self.hover_text = None
+        self.mailer = None
 
         # Verify required attributes have been set
         self._check_required()
@@ -184,18 +185,12 @@ class Monitor:
         if os.path.isdir(self.output):
             self.output = os.path.join(self.output, f"{self._filename}.html")
 
-        # Execute tracking, outlier identification, and set plot arguments
+        # Execute tracking, outlier identification, notifications and set plot arguments
         self.results = self.track()
         self.outliers = self.find_outliers()
         self.define_plot()
         self.notification = self.notification_string()
-
-        self.mailer = Email(
-            self.notification_settings['username'],
-            self.name,
-            self.notification,
-            self.notification_settings['recipients']
-        )
+        self._set_notification()
 
         # Create figure; If a subplot is required, create a subplot figure
         if self.subplots:
@@ -223,6 +218,15 @@ class Monitor:
         if self.name is None or self.data_model is None:
             raise KeyError('"name" and "data_model" attributes must be defined in a monitor.')
 
+    def _set_notification(self):
+        if self.notification_settings and self.notification_settings['active'] is True:
+            self.mailer = Email(
+                self.notification_settings['username'],
+                self.name,
+                self.notification,
+                self.notification_settings['recipients']
+            )
+
     @property
     def data(self):
         return self._data_model.data
@@ -243,7 +247,7 @@ class Monitor:
         raise NotImplementedError('Monitor must track something.')
 
     def notification_string(self):
-        if self.notification_settings['active'] is True:
+        if self.notification_settings and self.notification_settings['active'] is True:
             raise NotImplementedError(
                 'With notification settings activated, the monitoring results message must be constructed.'
             )
