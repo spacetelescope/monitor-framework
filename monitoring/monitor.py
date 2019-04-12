@@ -71,12 +71,10 @@ class DataModel:
 
     def _to_pandas(self):
         """Convert column or row data to a pandas dataframe."""
-
         self.data = pd.DataFrame.from_dict(self._data)
 
     def get_data(self) -> VALID_GET:
         """Retrieve monitor data. Should return row-wise or column-wise data."""
-
         raise NotImplementedError('"get_data" method required for use.')
 
 
