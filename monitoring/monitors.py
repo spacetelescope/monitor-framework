@@ -6,13 +6,13 @@ from astropy.time import Time
 from itertools import repeat
 
 
-from monitoring.monitor import Monitor
+from monitoring.monitor import BaseMonitor
 from monitoring.data_models import AcqImageModel, AcqImageV2V3Model, AcqPeakdModel, AcqPeakxdModel
 
 COS_MONITORING = '/grp/hst/cos2/monitoring'
 
 
-class AcqImageMonitor(Monitor):
+class AcqImageMonitor(BaseMonitor):
     name = 'AcqImage Monitor'
     data_model = AcqImageModel
     plottype = 'scatter'
@@ -44,7 +44,7 @@ class AcqImageMonitor(Monitor):
         self.z = self.data.EXPSTART
 
 
-class AcqImageSlewMonitor(Monitor):
+class AcqImageSlewMonitor(BaseMonitor):
     name = 'AcImage Slew Monitor'
     data_model = AcqImageModel
     subplots = True
@@ -143,7 +143,7 @@ class AcqImageSlewMonitor(Monitor):
         self.figure['layout'].update(layout)
 
 
-class AcqImageFGSMonitor(Monitor):
+class AcqImageFGSMonitor(BaseMonitor):
     name = 'AcqImage FGS Monitor'
     data_model = AcqImageModel
     labels = ['ROOTNAME', 'PROPOSID']
@@ -249,7 +249,7 @@ class AcqImageFGSMonitor(Monitor):
         self.figure['layout'].update(layout)
 
 
-class AcqImageV2V3Monitor(Monitor):
+class AcqImageV2V3Monitor(BaseMonitor):
     name = 'V2V3 Offset Monitor'
     data_model = AcqImageV2V3Model
     labels = ['ROOTNAME', 'PROPOSID']
@@ -442,7 +442,7 @@ class AcqImageV2V3Monitor(Monitor):
         self.figure['layout'].update(layout)
 
 
-class AcqPeakdMonitor(Monitor):
+class AcqPeakdMonitor(BaseMonitor):
     name = 'AcqPeakd Monitor'
     data_model = AcqPeakdModel
     labels = ['ROOTNAME', 'PROPOSID']
@@ -507,7 +507,7 @@ class AcqPeakdMonitor(Monitor):
         self.figure['layout'].update(layout)
 
 
-class AcqPeakxdMonitor(Monitor):
+class AcqPeakxdMonitor(BaseMonitor):
     name = 'AcqPeakxd Monitor'
     data_model = AcqPeakxdModel
     labels = ['ROOTNAME', 'PROPOSID']

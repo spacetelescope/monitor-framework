@@ -4,6 +4,7 @@ import pandas as pd
 import smtplib
 import os
 import numpy as np
+import abc
 
 from email.mime.text import MIMEText
 from datetime import datetime
@@ -14,6 +15,70 @@ ROW_DATA = List[dict]
 COL_DATA = Dict[str, list]
 VALID_GET = Union[ROW_DATA, COL_DATA]
 EMAIL_TO = Union[str, list]
+
+
+class Monitor(abc.ABC):
+    name = None
+    data_model = None
+    notification_settings = None
+    plottype = None
+    subplots = False
+    subplot_layout = None
+    labels = None
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return f'<{self.name} Monitor object>'
+
+    @abc.abstractmethod
+    def track(self):
+        pass
+
+    @abc.abstractmethod
+    def find_outliers(self):
+        pass
+
+    @abc.abstractmethod
+    def notification(self):
+        pass
+
+    @abc.abstractmethod
+    def plot(self):
+        pass
+
+
+class MetaClass(type):
+    @staticmethod
+    def wrap(get_data):
+        """Return wrapped get_data method."""
+        def to_pandas(self):
+            return pd.DataFrame.from_dict(get_data(self))
+
+        return to_pandas
+
+    def __new__(mcs, name, bases, attrs):
+        """If the class has a 'run' method, wrap it"""
+        attrs['get_data'] = mcs.wrap(attrs['get_data'])
+
+        return super(MetaClass, mcs).__new__(mcs, name, bases, attrs)
+
+
+class DataModel:
+    """Baseclass for monitor data models.
+
+    Intended to be subclassed with one required method: get_data. Results from get_data will be used to generate a
+    pandas DataFrame which the monitors use for the data source.
+    """
+    __metaclass__ = MetaClass
+
+    def __init__(self):
+        self.data = self.get_data()
+
+    @abc.abstractmethod
+    def get_data(self) -> VALID_GET:
+        """Retrieve monitor data. Should return row-wise or column-wise data."""
 
 
 class Email:
@@ -57,28 +122,7 @@ class Email:
             mailer.send_message(self.message)
 
 
-class DataModel:
-    """Baseclass for monitor data models.
-
-    Intended to be subclassed with one required method: get_data. Results from get_data will be used to generate a
-    pandas DataFrame which the monitors use for the data source.
-    """
-    def __init__(self):
-        self.data = None
-
-        self._data = self.get_data()
-        self._to_pandas()
-
-    def _to_pandas(self):
-        """Convert column or row data to a pandas dataframe."""
-        self.data = pd.DataFrame.from_dict(self._data)
-
-    def get_data(self) -> VALID_GET:
-        """Retrieve monitor data. Should return row-wise or column-wise data."""
-        raise NotImplementedError('"get_data" method required for use.')
-
-
-class Monitor:
+class BaseMonitor(Monitor):
     """Baseclass for monitors. Intended to be subclassed as a framework for monitors.
 
     Required methods:
@@ -137,14 +181,6 @@ class Monitor:
 
         labels: Optional.  List of keywords that should be used as hover tool labels.
     """
-    name = None
-    data_model = None
-    notification_settings = None
-    plottype = None
-    subplots = False
-    subplot_layout = None
-    labels = None
-
     def __init__(self):
         """Instantiation of the Monitor. Gather data, filter it, set plotting parameters."""
         self.x = None
@@ -187,7 +223,7 @@ class Monitor:
         self.results = self.track()
         self.outliers = self.find_outliers()
         self.define_plot()
-        self.notification = self.notification_string()
+        self.notification = self.notification()
         self._set_notification()
 
         # Create figure; If a subplot is required, create a subplot figure
@@ -196,12 +232,6 @@ class Monitor:
 
         else:
             self.figure = go.Figure()
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return f'<{self.name} Monitor object>'
 
     def _check_plottype(self):
         """Check that the plottype attribute is set to a valid type."""
@@ -244,7 +274,7 @@ class Monitor:
         """Returns monitoring results. Sets the results attribute."""
         raise NotImplementedError('Monitor must track something.')
 
-    def notification_string(self):
+    def notification(self):
         if self.notification_settings and self.notification_settings['active'] is True:
             raise NotImplementedError(
                 'With notification settings activated, the monitoring results message must be constructed.'
