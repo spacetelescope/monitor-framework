@@ -570,9 +570,3 @@ class AcqPeakxdMonitor(BaseMonitor):
         layout = go.Layout(updatemenus=updatemenus, hovermode='closest')
         self.figure.add_traces(traces)
         self.figure['layout'].update(layout)
-
-
-if __name__ == '__main__':
-    for monitor in [AcqImageSlewMonitor, AcqImageFGSMonitor, AcqImageV2V3Monitor, AcqPeakdMonitor, AcqPeakxdMonitor]:
-        active = monitor()
-        active.monitor()

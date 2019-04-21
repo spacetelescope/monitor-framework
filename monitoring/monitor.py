@@ -49,36 +49,22 @@ class Monitor(abc.ABC):
         pass
 
 
-class MetaClass(type):
-    @staticmethod
-    def wrap(get_data):
-        """Return wrapped get_data method."""
-        def to_pandas(self):
-            return pd.DataFrame.from_dict(get_data(self))
-
-        return to_pandas
-
-    def __new__(mcs, name, bases, attrs):
-        """If the class has a 'run' method, wrap it"""
-        attrs['get_data'] = mcs.wrap(attrs['get_data'])
-
-        return super(MetaClass, mcs).__new__(mcs, name, bases, attrs)
-
-
 class DataModel:
     """Baseclass for monitor data models.
 
     Intended to be subclassed with one required method: get_data. Results from get_data will be used to generate a
     pandas DataFrame which the monitors use for the data source.
     """
-    __metaclass__ = MetaClass
-
     def __init__(self):
-        self.data = self.get_data()
+        self._data = self.get_data()
+        self.data = self._to_pandas()
 
     @abc.abstractmethod
     def get_data(self) -> VALID_GET:
         """Retrieve monitor data. Should return row-wise or column-wise data."""
+
+    def _to_pandas(self):
+        return pd.DataFrame.from_dict(self._data)
 
 
 class Email:
