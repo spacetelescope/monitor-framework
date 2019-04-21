@@ -11,6 +11,8 @@ from datetime import datetime
 from plotly import tools
 from typing import Union, List, Dict, Iterable, Any
 
+from monitoring.database import BaseModel, DatabaseInterface, DB
+
 ROW_DATA = List[dict]
 COL_DATA = Dict[str, list]
 VALID_GET = Union[ROW_DATA, COL_DATA]
@@ -46,6 +48,10 @@ class Monitor(abc.ABC):
 
     @abc.abstractmethod
     def plot(self):
+        pass
+
+    @abc.abstractmethod
+    def store_results(self):
         pass
 
 
@@ -108,7 +114,7 @@ class Email:
             mailer.send_message(self.message)
 
 
-class BaseMonitor(Monitor):
+class BaseMonitor(Monitor, DatabaseInterface):
     """Baseclass for monitors. Intended to be subclassed as a framework for monitors.
 
     Required methods:
@@ -175,6 +181,10 @@ class BaseMonitor(Monitor):
         self.info_keys = None
         self.hover_text = None
         self.mailer = None
+        self.db = None
+
+        if self.name is not None:
+            self.__name__ = self.name
 
         # Verify required attributes have been set
         self._check_required()
@@ -219,6 +229,8 @@ class BaseMonitor(Monitor):
         else:
             self.figure = go.Figure()
 
+        self.Table = self.create_table()
+
     def _check_plottype(self):
         """Check that the plottype attribute is set to a valid type."""
         if self.plottype and self.plottype not in ('scatter', 'image', 'line'):
@@ -229,7 +241,7 @@ class BaseMonitor(Monitor):
 
     def _check_required(self):
         """Check that the required attributes have been defined."""
-        if self.name is None or self.data_model is None:
+        if self.data_model is None:
             raise KeyError('"name" and "data_model" attributes must be defined in a monitor.')
 
     def _set_notification(self):
@@ -289,6 +301,8 @@ class BaseMonitor(Monitor):
         """Build plots, add to figure, notify based on notification settings."""
         self.plot()
         off.plot(self.figure, filename=self.output, auto_open=False)
+
+        self.store_results()
 
         if self.notification_settings and self.notification_settings['active'] is True:
             self.notify()
@@ -360,3 +374,18 @@ class BaseMonitor(Monitor):
         )
 
         self.figure.add_trace(image_plot)
+
+    def create_table(self):
+        class Table(BaseModel):
+            class Meta:
+                table_name = self.__name__
+
+        return Table
+
+    def store_results(self):
+        with DB.connection_context():
+            if not self.Table.table_exists():
+                self.Table.create_table()
+
+            new_results = self.Table.create(datetime=self.date.isoformat(), results={'results': self.results})
+            new_results.save()
