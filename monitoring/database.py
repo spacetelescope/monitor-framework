@@ -3,7 +3,7 @@ import abc
 from peewee import Model, DateTimeField
 from playhouse.sqlite_ext import JSONField, SqliteExtDatabase
 
-from . import SETTINGS
+from .database_config import SETTINGS
 
 DB = SqliteExtDatabase(**SETTINGS)
 
@@ -19,9 +19,12 @@ class BaseModel(Model):
 
 class DatabaseInterface(abc.ABC):
 
-    @abc.abstractmethod
     def create_table(self):
-        pass
+        class Table(BaseModel):
+            class Meta:
+                table_name = self.__name__
+
+        return Table
 
     @abc.abstractmethod
     def store_results(self):

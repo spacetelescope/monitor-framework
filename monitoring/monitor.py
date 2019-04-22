@@ -11,7 +11,7 @@ from datetime import datetime
 from plotly import tools
 from typing import Union, List, Dict, Iterable, Any
 
-from monitoring.database import BaseModel, DatabaseInterface, DB
+from monitoring.database import DatabaseInterface, DB
 
 ROW_DATA = List[dict]
 COL_DATA = Dict[str, list]
@@ -231,6 +231,10 @@ class BaseMonitor(Monitor, DatabaseInterface):
 
         self.Table = self.create_table()
 
+        with DB.connection_context():
+            if not self.Table.table_exists():
+                self.Table.create_table()
+
     def _check_plottype(self):
         """Check that the plottype attribute is set to a valid type."""
         if self.plottype and self.plottype not in ('scatter', 'image', 'line'):
@@ -268,9 +272,10 @@ class BaseMonitor(Monitor, DatabaseInterface):
 
         )
 
+    @abc.abstractmethod
     def track(self) -> Any:
         """Returns monitoring results. Sets the results attribute."""
-        raise NotImplementedError('Monitor must track something.')
+        pass
 
     def notification(self):
         if self.notification_settings and self.notification_settings['active'] is True:
@@ -300,8 +305,6 @@ class BaseMonitor(Monitor, DatabaseInterface):
     def monitor(self):
         """Build plots, add to figure, notify based on notification settings."""
         self.plot()
-        off.plot(self.figure, filename=self.output, auto_open=False)
-
         self.store_results()
 
         if self.notification_settings and self.notification_settings['active'] is True:
@@ -327,6 +330,7 @@ class BaseMonitor(Monitor, DatabaseInterface):
             self.basic_image()
 
         self.figure['layout'].update(self.basic_layout)
+        off.plot(self.figure, filename=self.output, auto_open=False)
 
     def _basic_scatter(self, mode: str):
         """Create Scatter trace object. Update the figure attribute. Requires that x and y attributes are set."""
@@ -375,17 +379,6 @@ class BaseMonitor(Monitor, DatabaseInterface):
 
         self.figure.add_trace(image_plot)
 
-    def create_table(self):
-        class Table(BaseModel):
-            class Meta:
-                table_name = self.__name__
-
-        return Table
-
     def store_results(self):
-        with DB.connection_context():
-            if not self.Table.table_exists():
-                self.Table.create_table()
-
-            new_results = self.Table.create(datetime=self.date.isoformat(), results={'results': self.results})
-            new_results.save()
+        new_results = self.Table.create(datetime=self.date.isoformat(), result={'results': list(self.results)})
+        new_results.save()

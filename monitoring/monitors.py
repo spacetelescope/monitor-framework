@@ -33,7 +33,7 @@ class AcqImageMonitor(BaseMonitor):
         """Return mask defining outliers as acqs whose slew is greater than 2 arcseconds."""
         return self.results >= 2
 
-    def notification_string(self):
+    def notification(self):
         return (
             f'{np.count_nonzero(self.outliers)} AcqImages were found to have a total slew of greater than 2 arcseconds'
         )
