@@ -506,6 +506,12 @@ class AcqPeakdMonitor(BaseMonitor):
         self.figure.add_traces(traces)
         self.figure['layout'].update(layout)
 
+    def store_results(self):
+        groups, std = self.results
+
+        new_result = self.Table.create(datetime=self.date.isoformat(), result=std.to_json())
+        new_result.save()
+
 
 class AcqPeakxdMonitor(BaseMonitor):
     name = 'AcqPeakxd Monitor'
