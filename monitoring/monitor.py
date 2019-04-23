@@ -11,7 +11,7 @@ from datetime import datetime
 from plotly import tools
 from typing import Union, List, Dict, Iterable, Any
 
-from monitoring.database import DatabaseInterface, DB
+from monitoring.database import BaseModel
 
 ROW_DATA = List[dict]
 COL_DATA = Dict[str, list]
@@ -19,31 +19,10 @@ VALID_GET = Union[ROW_DATA, COL_DATA]
 EMAIL_TO = Union[str, list]
 
 
-class Monitor(abc.ABC):
-    name = None
-    data_model = None
-    notification_settings = None
-    plottype = None
-    subplots = False
-    subplot_layout = None
-    labels = None
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return f'<{self.name} Monitor object>'
+class MonitorInterface(abc.ABC):
 
     @abc.abstractmethod
     def track(self):
-        pass
-
-    @abc.abstractmethod
-    def find_outliers(self):
-        pass
-
-    @abc.abstractmethod
-    def notification(self):
         pass
 
     @abc.abstractmethod
@@ -55,7 +34,14 @@ class Monitor(abc.ABC):
         pass
 
 
-class DataModel:
+class DataInterface(abc.ABC):
+
+    @abc.abstractmethod
+    def get_data(self):
+        pass
+
+
+class BaseDataModel(DataInterface):
     """Baseclass for monitor data models.
 
     Intended to be subclassed with one required method: get_data. Results from get_data will be used to generate a
@@ -114,7 +100,7 @@ class Email:
             mailer.send_message(self.message)
 
 
-class BaseMonitor(Monitor, DatabaseInterface):
+class BaseMonitor(MonitorInterface):
     """Baseclass for monitors. Intended to be subclassed as a framework for monitors.
 
     Required methods:
@@ -173,39 +159,35 @@ class BaseMonitor(Monitor, DatabaseInterface):
 
         labels: Optional.  List of keywords that should be used as hover tool labels.
     """
+    data_model = None
+    notification_settings = None
+    subplots = False
+    subplot_layout = None
+    labels = None
+
     def __init__(self):
         """Instantiation of the Monitor. Gather data, filter it, set plotting parameters."""
         self.x = None
         self.y = None
         self.z = None
-        self.info_keys = None
+        self.plottype = None
         self.hover_text = None
         self.mailer = None
-        self.db = None
-
-        if self.name is not None:
-            self.__name__ = self.name
-
-        # Verify required attributes have been set
-        self._check_required()
-        self._check_plottype()
-
-        self._data_model = self.data_model()
-
-        # Create hover tool text
-        if self.labels:
-            self.data['hover_text'] = [
-                '<br>'.join(
-                    str(row).replace('\n', '<br>').split('<br>')[:-1]
-                ) for _, row in self.data[self.labels].iterrows()
-            ]
-
-        self.filtered_data = self.filter_data()
 
         self.date = datetime.today()
 
+        self.Table = BaseModel
+        self.Table.define_table_name(self.__class__.__name__)
+
+        # Create figure; If a subplot is required, create a subplot figure
+        if self.subplots:
+            self.figure = tools.make_subplots(*self.subplot_layout)
+
+        else:
+            self.figure = go.Figure()
+
         # Add date to the name of the monitor; Create a filename from the name given
-        self.name += f': {self.date.date().isoformat()}'
+        self.name = self.__class__.__name__ + f': {self.date.date().isoformat()}'
         self._filename = '_'.join(self.name.split(': ')).replace(' ', '')
 
         # Set output file path
@@ -216,39 +198,40 @@ class BaseMonitor(Monitor, DatabaseInterface):
             self.output = os.path.join(self.output, f"{self._filename}.html")
 
         # Execute tracking, outlier identification, notifications and set plot arguments
-        self.results = self.track()
-        self.outliers = self.find_outliers()
+        if self.data_model is None:
+            raise NotImplementedError('"data_model" must be defined in a monitor.')
+
+        self._data_model = self.data_model()
+
+        # Create hover tool text
+        if self.labels:
+            self.data['hover_text'] = [
+                '<br>'.join(str(row).replace('\n', '<br>').split('<br>')[:-1])
+                for _, row in self.data[self.labels].iterrows()
+            ]
+
+        self.filtered_data = self.filter_data()
+
         self.define_plot()
-        self.notification = self.notification()
-        self._set_notification()
-
-        # Create figure; If a subplot is required, create a subplot figure
-        if self.subplots:
-            self.figure = tools.make_subplots(*self.subplot_layout)
-
-        else:
-            self.figure = go.Figure()
-
-        self.Table = self.create_table()
-
-        with DB.connection_context():
-            if not self.Table.table_exists():
-                self.Table.create_table()
-
-    def _check_plottype(self):
-        """Check that the plottype attribute is set to a valid type."""
         if self.plottype and self.plottype not in ('scatter', 'image', 'line'):
             raise KeyError(
-                f'{self.plottype} is not one of: "scatter", "image", "line". Please use one of those or set to None if '
-                f'constructing a custom plot'
+                f'{self.plottype} is not one of: "scatter", "image", "line". Please use one of those or set to None'
+                f' if constructing a custom plot'
             )
 
-    def _check_required(self):
-        """Check that the required attributes have been defined."""
-        if self.data_model is None:
-            raise KeyError('"name" and "data_model" attributes must be defined in a monitor.')
+        self.results = self.track()
+        self.outliers = self.find_outliers()
 
-    def _set_notification(self):
+        self.notification = self.set_notification()
+        self._set_mailer()
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return f'<{self.__class__.__name__} Monitor object>'
+
+    def _set_mailer(self):
         if self.notification_settings and self.notification_settings['active'] is True:
             self.mailer = Email(
                 self.notification_settings['username'],
@@ -256,6 +239,13 @@ class BaseMonitor(Monitor, DatabaseInterface):
                 self.notification,
                 self.notification_settings['recipients']
             )
+
+    @classmethod
+    def get_table(cls):
+        table = BaseModel
+        table.define_table_name(cls.__name__)
+
+        return table
 
     @property
     def data(self):
@@ -277,7 +267,7 @@ class BaseMonitor(Monitor, DatabaseInterface):
         """Returns monitoring results. Sets the results attribute."""
         pass
 
-    def notification(self):
+    def set_notification(self):
         if self.notification_settings and self.notification_settings['active'] is True:
             raise NotImplementedError(
                 'With notification settings activated, the monitoring results message must be constructed.'
@@ -305,7 +295,13 @@ class BaseMonitor(Monitor, DatabaseInterface):
     def monitor(self):
         """Build plots, add to figure, notify based on notification settings."""
         self.plot()
-        self.store_results()
+
+        # noinspection PyProtectedMember
+        with self.Table._meta.database:
+            if not self.Table.table_exists():
+                self.Table.create_table()
+
+            self.store_results()
 
         if self.notification_settings and self.notification_settings['active'] is True:
             self.notify()

@@ -1,5 +1,3 @@
-import abc
-
 from peewee import Model, DateTimeField
 from playhouse.sqlite_ext import JSONField, SqliteExtDatabase
 
@@ -12,25 +10,12 @@ class BaseModel(Model):
 
     class Meta:
         database = DB
+        table_name = None
+
+    @classmethod
+    def define_table_name(cls, table_name):
+        cls._meta.table_name = table_name
 
     datetime = DateTimeField(primary_key=True, verbose_name='Monitor execution date and time')
     result = JSONField(verbose_name='Monitoring results')
 
-
-class DatabaseInterface(abc.ABC):
-
-    def create_table(self):
-        class Table(BaseModel):
-            class Meta:
-                table_name = self.__name__
-
-        return Table
-
-    @abc.abstractmethod
-    def store_results(self):
-        pass
-
-
-def cold_start(table_list):
-    with DB.connection_context():
-        DB.create_tables(table_list)

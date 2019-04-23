@@ -1,6 +1,6 @@
 import numpy as np
 
-from monitoring.monitor import DataModel
+from monitoring.monitor import BaseDataModel
 from monitoring.file_data import FileFinder
 
 SOURCE = '/grp/hst/cos2/cosmo'
@@ -21,18 +21,7 @@ def get_acq_data(acq_keys, acq_extensions, spt_keys, spt_extensions, exptype):
     return data_results
 
 
-class AcqImageModel(DataModel):
-
-    def get_data(self):
-        keywords, extensions = ('ACQSLEWX', 'ACQSLEWY', 'EXPSTART', 'ROOTNAME', 'PROPOSID', ), (0, 0, 1, 0, 0)
-        spt_keywords, spt_extensions = ('DGESTAR',), (0,)
-
-        data_results = get_acq_data(keywords, extensions, spt_keywords, spt_extensions, 'ACQ/IMAGE')
-
-        return data_results
-
-
-class AcqPeakdModel(DataModel):
+class AcqPeakdModel(BaseDataModel):
 
     def get_data(self):
         acq_keywords, acq_extensions = ('ACQSLEWX', 'EXPSTART', 'LIFE_ADJ', 'ROOTNAME', 'PROPOSID'), (0, 1, 0, 0, 0)
@@ -43,7 +32,7 @@ class AcqPeakdModel(DataModel):
         return data_results
 
 
-class AcqPeakxdModel(DataModel):
+class AcqPeakxdModel(BaseDataModel):
 
     def get_data(self):
         acq_keywords, acq_extensions = ('ACQSLEWY', 'EXPSTART', 'LIFE_ADJ', 'ROOTNAME', 'PROPOSID'), (0, 1, 0, 0, 0)
@@ -54,7 +43,7 @@ class AcqPeakxdModel(DataModel):
         return data_results
 
 
-class AcqImageV2V3Model(DataModel):
+class AcqImageModel(BaseDataModel):
 
     def get_data(self):
 

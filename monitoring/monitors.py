@@ -7,15 +7,13 @@ from itertools import repeat
 
 
 from monitoring.monitor import BaseMonitor
-from monitoring.data_models import AcqImageModel, AcqImageV2V3Model, AcqPeakdModel, AcqPeakxdModel
+from monitoring.data_models import AcqImageModel, AcqPeakdModel, AcqPeakxdModel
 
 COS_MONITORING = '/grp/hst/cos2/monitoring'
 
 
 class AcqImageMonitor(BaseMonitor):
-    name = 'AcqImage Monitor'
     data_model = AcqImageModel
-    plottype = 'scatter'
     labels = ['ROOTNAME', 'PROPOSID']
     output = '/Users/jwhite/Desktop/test.html'
 
@@ -33,12 +31,13 @@ class AcqImageMonitor(BaseMonitor):
         """Return mask defining outliers as acqs whose slew is greater than 2 arcseconds."""
         return self.results >= 2
 
-    def notification(self):
+    def set_notification(self):
         return (
             f'{np.count_nonzero(self.outliers)} AcqImages were found to have a total slew of greater than 2 arcseconds'
         )
 
     def define_plot(self):
+        self.plottype = 'scatter'
         self.x = -self.data.ACQSLEWX
         self.y = -self.data.ACQSLEWY
         self.z = self.data.EXPSTART
@@ -251,7 +250,7 @@ class AcqImageFGSMonitor(BaseMonitor):
 
 class AcqImageV2V3Monitor(BaseMonitor):
     name = 'V2V3 Offset Monitor'
-    data_model = AcqImageV2V3Model
+    data_model = AcqImageModel
     labels = ['ROOTNAME', 'PROPOSID']
     subplots = True
     subplot_layout = (2, 1)
@@ -440,6 +439,9 @@ class AcqImageV2V3Monitor(BaseMonitor):
 
         layout = go.Layout(updatemenus=updatemenus, hovermode='closest', shapes=lines)
         self.figure['layout'].update(layout)
+
+    def store_results(self):
+        pass
 
 
 class AcqPeakdMonitor(BaseMonitor):
