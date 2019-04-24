@@ -41,22 +41,35 @@ class DataInterface(abc.ABC):
         pass
 
 
-class BaseDataModel(DataInterface):
+class PandasMeta(abc.ABCMeta):
+    def __new__(mcs, classnames, bases, class_dict):
+        class_dict['get_data'] = mcs.wrap(class_dict['get_data'])
+
+        return super(PandasMeta, mcs).__new__(mcs, classnames, bases, class_dict)
+
+    @staticmethod
+    def wrap(get_data):
+        def to_pandas(self):
+            data = get_data(self)
+            df = pd.DataFrame.from_dict(data)
+
+            return df
+
+        return to_pandas
+
+
+class BaseDataModel(DataInterface, metaclass=PandasMeta):
     """Baseclass for monitor data models.
 
     Intended to be subclassed with one required method: get_data. Results from get_data will be used to generate a
     pandas DataFrame which the monitors use for the data source.
     """
     def __init__(self):
-        self._data = self.get_data()
-        self.data = self._to_pandas()
+        self.data = self.get_data()
 
     @abc.abstractmethod
     def get_data(self) -> VALID_GET:
         """Retrieve monitor data. Should return row-wise or column-wise data."""
-
-    def _to_pandas(self):
-        return pd.DataFrame.from_dict(self._data)
 
 
 class Email:
