@@ -1,9 +1,13 @@
 from peewee import Model, DateTimeField
-from playhouse.sqlite_ext import JSONField, SqliteExtDatabase
+from playhouse.sqlite_ext import JSONField, SqliteExtDatabase, DatabaseProxy
 
 from .database_config import SETTINGS
 
-DB = SqliteExtDatabase(**SETTINGS)
+if SETTINGS['database']:
+    DB = SqliteExtDatabase(**SETTINGS)
+
+else:
+    DB = DatabaseProxy()
 
 
 class BaseModel(Model):

@@ -11,7 +11,7 @@ from datetime import datetime
 from plotly import tools
 from typing import Union, List, Dict, Iterable, Any
 
-from monitorframe.database import BaseModel
+from monitorframe.database import BaseModel, SETTINGS
 
 ROW_DATA = List[dict]
 COL_DATA = Dict[str, list]
@@ -51,7 +51,7 @@ class PandasMeta(abc.ABCMeta):
     def wrap(get_data):
         def to_pandas(self):
             data = get_data(self)
-            df = pd.DataFrame.from_dict(data)
+            df = pd.DataFrame(data)
 
             return df
 
@@ -186,11 +186,12 @@ class BaseMonitor(MonitorInterface):
         self.plottype = None
         self.hover_text = None
         self.mailer = None
+        self.Table = None
 
         self.date = datetime.today()
 
-        self.Table = BaseModel
-        self.Table.define_table_name(self.__class__.__name__)
+        if SETTINGS['database']:
+            self.define_table()
 
         # Create figure; If a subplot is required, create a subplot figure
         if self.subplots:
@@ -275,6 +276,10 @@ class BaseMonitor(MonitorInterface):
 
         if active.notification_settings and active.notification_settings['active'] is True:
             active.notify()
+
+    def define_table(self):
+        self.Table = BaseModel
+        self.Table.define_table_name(self.__class__.__name__)
 
     @property
     def data(self):
@@ -391,5 +396,16 @@ class BaseMonitor(MonitorInterface):
         self.figure.add_trace(image_plot)
 
     def store_results(self):
-        new_results = self.Table.create(datetime=self.date.isoformat(), result={'results': list(self.results)})
-        new_results.save()
+        if self.Table is not None:
+            if isinstance(self.results, Iterable):
+                self.results = list(self.results)
+
+            try:
+                new_results = self.Table.create(datetime=self.date.isoformat(), result={'results': self.results})
+                new_results.save()
+            except TypeError:
+                print(
+                    'Results could not be stored automatically. To store results, implement a custom store_results '
+                    'method'
+                )
+                pass
