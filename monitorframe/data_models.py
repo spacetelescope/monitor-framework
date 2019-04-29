@@ -1,7 +1,7 @@
 import numpy as np
 
-from monitoring.monitor import BaseDataModel
-from monitoring.file_data import FileFinder
+from monitorframe.monitor import BaseDataModel
+from monitorframe.file_data import FileFinder
 
 SOURCE = '/grp/hst/cos2/cosmo'
 

@@ -6,8 +6,8 @@ from astropy.time import Time
 from itertools import repeat
 
 
-from monitoring.monitor import BaseMonitor
-from monitoring.data_models import AcqImageModel, AcqPeakdModel, AcqPeakxdModel
+from monitorframe.monitor import BaseMonitor
+from monitorframe.data_models import AcqImageModel, AcqPeakdModel, AcqPeakxdModel
 
 COS_MONITORING = '/grp/hst/cos2/monitoring'
 

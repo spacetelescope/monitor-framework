@@ -1,2 +1,8 @@
 # PyCharm
 *idea
+
+# Python
+*.pyc
+
+# LaTex
+*tex

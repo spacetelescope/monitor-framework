@@ -11,7 +11,7 @@ from datetime import datetime
 from plotly import tools
 from typing import Union, List, Dict, Iterable, Any
 
-from monitoring.database import BaseModel
+from monitorframe.database import BaseModel
 
 ROW_DATA = List[dict]
 COL_DATA = Dict[str, list]
@@ -260,6 +260,22 @@ class BaseMonitor(MonitorInterface):
 
         return table
 
+    @classmethod
+    def monitor(cls):
+        """Build plots, add to figure, notify based on notification settings."""
+        active = cls()
+        active.plot()
+
+        # noinspection PyProtectedMember
+        with active.Table._meta.database:
+            if not active.Table.table_exists():
+                active.Table.create_table()
+
+            active.store_results()
+
+        if active.notification_settings and active.notification_settings['active'] is True:
+            active.notify()
+
     @property
     def data(self):
         return self._data_model.data
@@ -298,26 +314,12 @@ class BaseMonitor(MonitorInterface):
         pass
 
     def define_plot(self):
-        """Sets the x, y, and z attributes used in the basic plotting methods."""
+        """Sets the x, y, z, and plottype attributes used in the basic plotting methods."""
         pass
 
     def notify(self):
         """Send notification email."""
         self.mailer.send()
-
-    def monitor(self):
-        """Build plots, add to figure, notify based on notification settings."""
-        self.plot()
-
-        # noinspection PyProtectedMember
-        with self.Table._meta.database:
-            if not self.Table.table_exists():
-                self.Table.create_table()
-
-            self.store_results()
-
-        if self.notification_settings and self.notification_settings['active'] is True:
-            self.notify()
 
     def basic_scatter(self):
         """Create a scatter plot."""
