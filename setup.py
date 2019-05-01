@@ -33,7 +33,7 @@ setup(name='monitorframe',  # Required
                    # Python versions supported.
                    'Programming Language :: Python :: 3'],
 
-      install_requires=['pandas', 'plotly', 'peewee'],
+      install_requires=['pandas', 'plotly', 'peewee', 'numpy'],
 
       **setup_parameters
       )

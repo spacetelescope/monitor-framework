@@ -5,6 +5,7 @@ import smtplib
 import os
 import numpy as np
 import abc
+import warnings
 
 from email.mime.text import MIMEText
 from datetime import datetime
@@ -177,6 +178,7 @@ class BaseMonitor(MonitorInterface):
     subplots = False
     subplot_layout = None
     labels = None
+    output = None
 
     def __init__(self):
         """Instantiation of the Monitor. Gather data, filter it, set plotting parameters."""
@@ -186,12 +188,19 @@ class BaseMonitor(MonitorInterface):
         self.plottype = None
         self.hover_text = None
         self.mailer = None
-        self.Table = None
+        self.results = None
+        self.outliers = None
+        self.notification = None
+        self.data = None
+        self.filtered_data = None
+        self._table = None
+        self.datetimecol = None
+        self.resultcol = None
 
         self.date = datetime.today()
 
         if SETTINGS['database']:
-            self.define_table()
+            self._define_table()
 
         # Create figure; If a subplot is required, create a subplot figure
         if self.subplots:
@@ -206,38 +215,14 @@ class BaseMonitor(MonitorInterface):
 
         # Set output file path
         if not self.output:
-            self.output = f'{os.path.abspath(f"{self._filename}.html")}'
+            self.output = f'{os.path.join(os.getcwd(), f"{self._filename}.html")}'
 
-        if os.path.isdir(self.output):
+        elif os.path.isdir(self.output):
             self.output = os.path.join(self.output, f"{self._filename}.html")
 
         # Execute tracking, outlier identification, notifications and set plot arguments
         if self.data_model is None:
             raise NotImplementedError('"data_model" must be defined in a monitor.')
-
-        self._data_model = self.data_model()
-
-        # Create hover tool text
-        if self.labels:
-            self.data['hover_text'] = [
-                '<br>'.join(str(row).replace('\n', '<br>').split('<br>')[:-1])
-                for _, row in self.data[self.labels].iterrows()
-            ]
-
-        self.filtered_data = self.filter_data()
-
-        self.define_plot()
-        if self.plottype and self.plottype not in ('scatter', 'image', 'line'):
-            raise KeyError(
-                f'{self.plottype} is not one of: "scatter", "image", "line". Please use one of those or set to None'
-                f' if constructing a custom plot'
-            )
-
-        self.results = self.track()
-        self.outliers = self.find_outliers()
-
-        self.notification = self.set_notification()
-        self._set_mailer()
 
     def __str__(self):
         return self.name
@@ -254,47 +239,73 @@ class BaseMonitor(MonitorInterface):
                 self.notification_settings['recipients']
             )
 
-    @classmethod
-    def get_table(cls):
-        table = BaseModel
-        table.define_table_name(cls.__name__)
+    def _define_table(self):
+        self._table = BaseModel
+        self._table.define_table_name(self.__class__.__name__)
+        self.datetime_col = self._table.datetime
+        self.result_col = self._table.result
 
-        return table
+    @property
+    def query(self):
+        if not self._table.table_exists():
+            return
 
-    @classmethod
-    def monitor(cls):
+        return self._table.select()
+
+    def initialize_data(self):
+        model = self.data_model()
+        self.data = model.data
+
+        # Create hover tool text
+        if self.labels:
+            self.data['hover_text'] = [
+                '<br>'.join(str(row).replace('\n', '<br>').split('<br>')[:-1])
+                for _, row in self.data[self.labels].iterrows()
+            ]
+
+        # Filter data if filter exists
+        self.filtered_data = self.filter_data()
+
+        self.define_plot()
+
+    def run_analysis(self):
+        self.results = self.track()
+        self.outliers = self.find_outliers()
+        self.notification = self.set_notification()
+        self._set_mailer()
+
+    def write_figure(self):
+        off.plot(self.figure, filename=self.output, auto_open=False)
+
+    def plot(self):
+        """Create plots and update figure attribute."""
+        if self.plottype == 'scatter':
+            self.basic_scatter()
+
+        elif self.plottype == 'line':
+            self.basic_line()
+
+        else:
+            self.basic_image()
+
+        self.figure['layout'].update(self.basic_layout)
+
+    def notify(self):
+        """Send notification email."""
+        self.mailer.send()
+
+    def monitor(self):
         """Build plots, add to figure, notify based on notification settings."""
-        active = cls()
-        active.plot()
+        if self.data is None:
+            self.initialize_data()
 
-        # noinspection PyProtectedMember
-        with active.Table._meta.database:
-            if not active.Table.table_exists():
-                active.Table.create_table()
+        self.run_analysis()
+        self.plot()
+        self.write_figure()
+        self.store_results()
 
-            active.store_results()
-
-        if active.notification_settings and active.notification_settings['active'] is True:
-            active.notify()
-
-    def define_table(self):
-        self.Table = BaseModel
-        self.Table.define_table_name(self.__class__.__name__)
-
-    @property
-    def data(self):
-        return self._data_model.data
-
-    @property
-    def basic_layout(self):
-        """Return a basic layout. Requiers x and y attributes to be set."""
-        return go.Layout(
-            title=self.name,
-            hovermode='closest',
-            xaxis=dict(title=self.x.name),
-            yaxis=dict(title=self.y.name),
-
-        )
+        if self.notification_settings and self.notification_settings['active'] is True:
+            self.notify()
 
     @abc.abstractmethod
     def track(self) -> Any:
@@ -322,9 +333,16 @@ class BaseMonitor(MonitorInterface):
         """Sets the x, y, z, and plottype attributes used in the basic plotting methods."""
         pass
 
-    def notify(self):
-        """Send notification email."""
-        self.mailer.send()
+    @property
+    def basic_layout(self):
+        """Return a basic layout. Requiers x and y attributes to be set."""
+        return go.Layout(
+            title=self.name,
+            hovermode='closest',
+            xaxis=dict(title=self.x.name),
+            yaxis=dict(title=self.y.name),
+
+        )
 
     def basic_scatter(self):
         """Create a scatter plot."""
@@ -333,20 +351,6 @@ class BaseMonitor(MonitorInterface):
     def basic_line(self):
         """Create a line plot."""
         self._basic_scatter('lines')
-
-    def plot(self):
-        """Create plots and update figure attribute."""
-        if self.plottype == 'scatter':
-            self.basic_scatter()
-
-        elif self.plottype == 'line':
-            self.basic_line()
-
-        else:
-            self.basic_image()
-
-        self.figure['layout'].update(self.basic_layout)
-        off.plot(self.figure, filename=self.output, auto_open=False)
 
     def _basic_scatter(self, mode: str):
         """Create Scatter trace object. Update the figure attribute. Requires that x and y attributes are set."""
@@ -395,17 +399,35 @@ class BaseMonitor(MonitorInterface):
 
         self.figure.add_trace(image_plot)
 
-    def store_results(self):
-        if self.Table is not None:
-            if isinstance(self.results, Iterable):
-                self.results = list(self.results)
+    def _store_in_db(self, results):
+        if isinstance(results, Iterable):
+            results = list(results)
+
+        # noinspection PyProtectedMember
+        with self._table._meta.database.atomic():
+            if not self._table.table_exists():
+                self._table.create_table()
 
             try:
-                new_results = self.Table.create(datetime=self.date.isoformat(), result={'results': self.results})
+                new_results = self._table.create(datetime=self.date.isoformat(), result={'results': results})
                 new_results.save()
+
             except TypeError:
-                print(
+                warnings.warn(
                     'Results could not be stored automatically. To store results, implement a custom store_results '
                     'method'
                 )
-                pass
+
+    def format_results(self):
+        pass
+
+    def store_results(self):
+        if self._table is not None:
+            # noinspection PyNoneFunctionAssignment
+            jsonified = self.format_results()
+            self._store_in_db(self.results if jsonified is None else jsonified)
+
+        else:
+            raise NotImplementedError(
+                'If not using built-in database support for storage, store_results must be overridden'
+            )

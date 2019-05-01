@@ -21,7 +21,7 @@ However, ``get_data`` can return any data structure that is compatible with gene
 The user should be careful that whatever data structure they choose to use actually results in the correct
 representation upon conversion to a ``DataFrame``, which will be accessible to the monitor through its ``data``
 attribute (for more on the pandas ``DataFrame`` check out
-`their documentation <https://pandas.pydata.org/pandas-docs/stable/getting_started/dsintro.html#dataframe>`_)
+`their documentation <https://pandas.pydata.org/pandas-docs/stable/getting_started/dsintro.html#dataframe>`_).
 
 And that's it!
 
@@ -29,7 +29,9 @@ Defining a New Monitor
 ----------------------
 Once a data model is defined, a new monitor can also be defined.
 Like the data model, a new monitor is defined by constructing a class that inherits ``BaseMonitor``.
+
 ``BaseMonitor`` has some basic functionality included at the start that users can take advantage of for simple monitors.
+However, at minimum, the ``track`` method must be implemented and the monitor must have a data model assigned to it.
 
 For example, to create a basic, bare-bones monitor that produces a line plot that represents the data defined in
 ``MyNewModel`` the following could be done:
@@ -37,20 +39,26 @@ For example, to create a basic, bare-bones monitor that produces a line plot tha
 .. code-block:: python
 
     class MyMonitor(BaseMonitor):
-    data_model = MyNewModel
+        data_model = MyNewModel
 
-    def track(self):
-        """Measure the mean of the first column"""
-        return self.data.col1.mean()  # Remember that data is a pandas DataFrame!
+        def track(self):
+            """Measure the mean of the first column"""
+            return self.data.col1.mean()  # Remember that data is a pandas DataFrame!
 
-    def define_plot(self):
-        self.plottype = 'line'
-        self.x = self.data.col1
-        self.y = self.data.col2
+        def define_plot(self):
+            self.plottype = 'line'
+            self.x = self.data.col1
+            self.y = self.data.col2
 
-This basic monitor will produce a simple ``plotly`` line graph when run.
+This basic monitor will produce a simple ``plotly`` line graph when the ``monitor`` method is called.
 
-If a database has been defined, the monitor will attempt to store them in the corresponding database table.
-However, for more complicated results that users wish to store, a custom ``stores_results`` method will need to be
-implemented.
+If a database has been defined, the monitor will attempt to store them in the corresponding database table, but for more
+complicated results that users wish to store, a ``format_results`` method will need to be implemented (see
+:ref:`Storing and accessing results <custom-storage>`).
 
+To execute the monitor, create an instance of ``MyMonitor`` and execute the ``monitor`` method:
+
+.. code-block:: python
+
+    monitor = MyMonitor()
+    monitor.monitor()

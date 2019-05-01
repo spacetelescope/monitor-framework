@@ -20,6 +20,8 @@ Or execute ``setup.py`` directly::
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
 
    overview
    creating_monitors
+   advanced_monitors
