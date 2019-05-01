@@ -10,7 +10,7 @@ Light-weight framework designed to make writing new instrument monitors quick an
 
 To install, clone the repository and use ``pip``::
 
-   cd monitoring
+   cd monitor-framework (or wherever the repo was cloned to)
    pip install .
 
 Or execute ``setup.py`` directly::
