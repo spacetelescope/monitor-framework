@@ -264,12 +264,14 @@ class BaseMonitor(MonitorInterface):
             ]
 
         # Filter data if filter exists
+        # noinspection PyNoneFunctionAssignment
         self.filtered_data = self.filter_data()
 
         self.define_plot()
 
     def run_analysis(self):
         self.results = self.track()
+        # noinspection PyNoneFunctionAssignment
         self.outliers = self.find_outliers()
         self.notification = self.set_notification()
         self._set_mailer()

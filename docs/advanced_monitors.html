@@ -96,6 +96,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#more-complex-plotting">More complex plotting</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#finding-outliers">Finding Outliers</a></li>
 </ul>
 </li>
 </ul>
@@ -190,21 +191,19 @@ called independently:</p>
 <div class="section" id="notifications">
 <h2>Notifications<a class="headerlink" href="#notifications" title="Permalink to this headline">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">monitorframe</span></code> frame work provides support for email notifications upon execution of a monitor.</p>
-<dl class="simple">
-<dt>There are two steps for activating email notifications:</dt><dd><ol class="arabic simple">
-<li><dl class="simple">
-<dt>Define <code class="docutils literal notranslate"><span class="pre">notification_settings</span></code> in the new monitor class required keys:</dt><dd><ul class="simple">
+<p>There are two steps for activating email notifications:</p>
+<ol class="arabic">
+<li><p>Define <code class="docutils literal notranslate"><span class="pre">notification_settings</span></code> in the new monitor class required keys:</p>
+<blockquote>
+<div><ul class="simple">
 <li><p><em>active</em>: turn the notifications on or off</p></li>
 <li><p><em>username</em>: user that’s used for sending the messages</p></li>
 <li><p><em>recipients</em>: additional users that should be notified of results</p></li>
 </ul>
-</dd>
-</dl>
+</div></blockquote>
 </li>
 <li><p>Define the message that the monitor should send in <code class="docutils literal notranslate"><span class="pre">set_notification</span></code></p></li>
 </ol>
-</dd>
-</dl>
 <p>For example:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyMonitor</span><span class="p">(</span><span class="n">BaseMonitor</span><span class="p">):</span>
     <span class="n">data_model</span> <span class="o">=</span> <span class="n">MyNewModel</span>
@@ -475,6 +474,27 @@ with the <code class="docutils literal notranslate"><span class="pre">write_figu
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">monitor</span><span class="o">.</span><span class="n">write_figure</span><span class="p">()</span>
 </pre></div>
 </div>
+</div>
+</div>
+<div class="section" id="finding-outliers">
+<h2>Finding Outliers<a class="headerlink" href="#finding-outliers" title="Permalink to this headline">¶</a></h2>
+<p>If part of the monitor is to locate outliers, then the <code class="docutils literal notranslate"><span class="pre">find_outliers</span></code> method must be implemented.
+This method should return a <em>mask</em> array that can be used with the <code class="docutils literal notranslate"><span class="pre">data</span></code> attribute of the monitor.</p>
+<p>Outliers will be accessible via the <code class="docutils literal notranslate"><span class="pre">outliers</span></code> attribute of the monitor.
+When using the basic plotting functionality, outliers will automatically be plotted in red, but for more advanced
+plotting that requires that the <code class="docutils literal notranslate"><span class="pre">plot</span></code> method be overridden, the user will have to determine how to visualize any
+outliers.</p>
+<p>For example, if we add a <code class="docutils literal notranslate"><span class="pre">find_outliers</span></code> implementation to <code class="docutils literal notranslate"><span class="pre">MyMonitor</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">find_outliers</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col1</span> <span class="o">&gt;</span> <span class="mi">1</span>  <span class="c1"># Returns a pandas Series mask</span>
+</pre></div>
+</div>
+<p>After the analysis has been run, you can access the outlying data with:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">monitor</span> <span class="o">=</span> <span class="n">MyMonitor</span><span class="p">()</span>
+<span class="n">monitor</span><span class="o">.</span><span class="n">monitor</span><span class="p">()</span>
+
+<span class="n">outliers</span> <span class="o">=</span> <span class="n">monitor</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">monitor</span><span class="o">.</span><span class="n">outliers</span><span class="p">]</span>
+</pre></div>
 </div>
 </div>
 </div>

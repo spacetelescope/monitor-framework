@@ -28,11 +28,16 @@ Notifications
 The ``monitorframe`` frame work provides support for email notifications upon execution of a monitor.
 
 There are two steps for activating email notifications:
-    1. Define ``notification_settings`` in the new monitor class required keys:
-        - *active*: turn the notifications on or off
-        - *username*: user that's used for sending the messages
-        - *recipients*: additional users that should be notified of results
-    2. Define the message that the monitor should send in ``set_notification``
+
+1. Define ``notification_settings`` in the new monitor class required keys:
+
+    - *active*: turn the notifications on or off
+
+    - *username*: user that's used for sending the messages
+
+    - *recipients*: additional users that should be notified of results
+
+2. Define the message that the monitor should send in ``set_notification``
 
 For example:
 
@@ -321,3 +326,29 @@ with the ``write_figure`` method:
 .. code-block:: python
 
     monitor.write_figure()
+
+Finding Outliers
+----------------
+If part of the monitor is to locate outliers, then the ``find_outliers`` method must be implemented.
+This method should return a *mask* array that can be used with the ``data`` attribute of the monitor.
+
+Outliers will be accessible via the ``outliers`` attribute of the monitor.
+When using the basic plotting functionality, outliers will automatically be plotted in red, but for more advanced
+plotting that requires that the ``plot`` method be overridden, the user will have to determine how to visualize any
+outliers.
+
+For example, if we add a ``find_outliers`` implementation to ``MyMonitor``:
+
+.. code-block:: python
+
+    def find_outliers(self):
+        return self.data.col1 > 1  # Returns a pandas Series mask
+
+After the analysis has been run, you can access the outlying data with:
+
+.. code-block:: python
+
+    monitor = MyMonitor()
+    monitor.monitor()
+
+    outliers = monitor.data[monitor.outliers]
