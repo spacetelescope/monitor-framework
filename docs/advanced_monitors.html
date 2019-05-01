@@ -1,0 +1,529 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Advanced Monitor Options &mdash; Monitor Framework  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Creating New Monitors" href="creating_monitors.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Monitor Framework
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="creating_monitors.html">Creating New Monitors</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Advanced Monitor Options</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#running-the-monitoring-steps-manually">Running the monitoring steps manually</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#notifications">Notifications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#database">Database</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#storing-and-accessing-results">Storing and accessing results</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#customizing-plotting">Customizing Plotting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#setting-a-specific-output-file-name-or-destination">Setting a specific output file name or destination</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#adding-a-third-dimension-to-the-output">Adding a third dimension to the output</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#adding-additional-information-to-the-hover-labels">Adding additional information to the hover labels</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#more-complex-plotting">More complex plotting</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Monitor Framework</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Advanced Monitor Options</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/advanced_monitors.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="advanced-monitor-options">
+<h1>Advanced Monitor Options<a class="headerlink" href="#advanced-monitor-options" title="Permalink to this headline">¶</a></h1>
+<p>In <a class="reference internal" href="creating_monitors.html"><span class="doc">Creating New Monitors</span></a> we outlined how to create a very simple monitor that produces a simple plot.
+In this section we will dive into options available for creating a more complex monitor.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>There are no further options for creating new data models, and so the previous section should be referenced for
+the creation of new data models.</p>
+</div>
+<div class="section" id="running-the-monitoring-steps-manually">
+<h2>Running the monitoring steps manually<a class="headerlink" href="#running-the-monitoring-steps-manually" title="Permalink to this headline">¶</a></h2>
+<p>If there is a need to run the monitoring steps manually, <code class="docutils literal notranslate"><span class="pre">BaseMonitor</span></code> includes the following methods that can be
+called independently:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">initialize_data</span></code>: retrieve data defined by the data model, set plotting parameters, set labels, filter data if a filter is defined.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">run_analysis</span></code>: execute the track method, find outliers if defined, sets notification.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plot</span></code>: plot the plotly figure object (creates the html output)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">notify</span></code>: sends notification email</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If the monitoring steps are run individually, <code class="docutils literal notranslate"><span class="pre">initialize_data</span></code> must be executed first, followed by
+<code class="docutils literal notranslate"><span class="pre">run_analysis</span></code>.</p>
+</div>
+</div>
+<div class="section" id="notifications">
+<h2>Notifications<a class="headerlink" href="#notifications" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">monitorframe</span></code> frame work provides support for email notifications upon execution of a monitor.</p>
+<dl class="simple">
+<dt>There are two steps for activating email notifications:</dt><dd><ol class="arabic simple">
+<li><dl class="simple">
+<dt>Define <code class="docutils literal notranslate"><span class="pre">notification_settings</span></code> in the new monitor class required keys:</dt><dd><ul class="simple">
+<li><p><em>active</em>: turn the notifications on or off</p></li>
+<li><p><em>username</em>: user that’s used for sending the messages</p></li>
+<li><p><em>recipients</em>: additional users that should be notified of results</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Define the message that the monitor should send in <code class="docutils literal notranslate"><span class="pre">set_notification</span></code></p></li>
+</ol>
+</dd>
+</dl>
+<p>For example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyMonitor</span><span class="p">(</span><span class="n">BaseMonitor</span><span class="p">):</span>
+    <span class="n">data_model</span> <span class="o">=</span> <span class="n">MyNewModel</span>
+    <span class="n">notification_settings</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">active</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+        <span class="n">username</span><span class="o">=</span><span class="s1">&#39;user&#39;</span><span class="p">,</span>
+        <span class="n">recipients</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;other@stsci.edu&#39;</span><span class="p">,</span> <span class="s1">&#39;other2@stsci.edu&#39;</span><span class="p">]</span>  <span class="c1"># recipients can also be a single string if there&#39;s only one</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">track</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Measure the mean of the first column&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col1</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>  <span class="c1"># Remember that data is a pandas DataFrame!</span>
+
+    <span class="k">def</span> <span class="nf">define_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plottype</span> <span class="o">=</span> <span class="s1">&#39;line&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col2</span>
+
+    <span class="k">def</span> <span class="nf">set_notification</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">f</span><span class="s1">&#39;The mean of col1 is {self.results}!&#39;</span>  <span class="c1"># The return value of track is stored in the results attribute!</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">set_notification</span></code> should return a string.</p>
+</div>
+</div>
+<div class="section" id="database">
+<h2>Database<a class="headerlink" href="#database" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">monitorframe</span></code> provides support for and an interface to an SQLite database through the <code class="docutils literal notranslate"><span class="pre">peewee</span></code> ORM.
+To use the database support option, simply define a name (or path) for the database in <code class="docutils literal notranslate"><span class="pre">database_config.py</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Contents of database_config.py</span>
+<span class="n">SETTINGS</span> <span class="o">=</span> <span class="p">{</span>
+<span class="s1">&#39;database&#39;</span><span class="p">:</span> <span class="s1">&#39;/path/to/my/db/monitor.db&#39;</span><span class="p">,</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">SETTINGS</span></code> will subsequently be used as arguments for defining the SQLite database.</p>
+<p><code class="docutils literal notranslate"><span class="pre">peewee</span></code> has additional arguments available for tweaking seen
+<a class="reference external" href="http://docs.peewee-orm.com/en/latest/peewee/database.html#using-sqlite">here</a>.</p>
+<p>If the database has been defined, it will automatically be created if it doesn’t exist, or modified if it does.
+Each monitor that is defined will automatically create a database table based on the name of the monitor:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">class</span><span class="p">,</span> <span class="n">MyMonitor</span> <span class="o">-&gt;</span> <span class="n">database</span> <span class="n">table</span> <span class="n">name</span><span class="p">,</span> <span class="s2">&quot;MyMonitor&quot;</span>
+</pre></div>
+</div>
+<dl class="simple">
+<dt>This table is defined with two columns:</dt><dd><ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Datetime</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Result</span></code></p></li>
+</ol>
+</dd>
+</dl>
+<p>The <code class="docutils literal notranslate"><span class="pre">Datetime</span></code> column corresponds to the date and time that the monitor was executed.
+Each monitor that is derived from <code class="docutils literal notranslate"><span class="pre">BaseMonitor</span></code> will have a <code class="docutils literal notranslate"><span class="pre">date</span></code> attribute that is set when an instance of the
+monitor is created.
+<code class="docutils literal notranslate"><span class="pre">date</span></code> is a python <code class="docutils literal notranslate"><span class="pre">datetime</span></code> object, and will be stored in the “isoformat”</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">Result</span></code> column is a JSON field.
+A JSON field is used to standardize the tables for each monitor while allowing for flexibility in what exactly each
+monitor stores in the table.
+The only caveat to this is that whatever results that users desire to store, must be compatible with python’s <code class="docutils literal notranslate"><span class="pre">json</span></code>
+encoder and decoder which performs the following translations:</p>
+<table class="docutils align-center">
+<colgroup>
+<col style="width: 68%" />
+<col style="width: 32%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>JSON</p></th>
+<th class="head"><p>Python</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>object</p></td>
+<td><p>dict</p></td>
+</tr>
+<tr class="row-odd"><td><p>array</p></td>
+<td><p>list</p></td>
+</tr>
+<tr class="row-even"><td><p>string</p></td>
+<td><p>str</p></td>
+</tr>
+<tr class="row-odd"><td><p>number (int)</p></td>
+<td><p>int</p></td>
+</tr>
+<tr class="row-even"><td><p>number (real)</p></td>
+<td><p>float</p></td>
+</tr>
+<tr class="row-odd"><td><p>true</p></td>
+<td><p>True</p></td>
+</tr>
+<tr class="row-even"><td><p>false</p></td>
+<td><p>False</p></td>
+</tr>
+<tr class="row-odd"><td><p>null</p></td>
+<td><p>None</p></td>
+</tr>
+</tbody>
+</table>
+<p>This means that whatever is intended to be stored should be composed of those Python data structures.
+There is some support for this with pandas.
+Both <code class="docutils literal notranslate"><span class="pre">Series</span></code> and <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> objects have a <code class="docutils literal notranslate"><span class="pre">to_json</span></code> method for automatically translating those data structures
+to JSON friendly structures.</p>
+<p>For more information on pandas’ <code class="docutils literal notranslate"><span class="pre">to_json</span></code> method, see
+<a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.to_json.html">this</a>, and for more on
+Python’s JSON encoder and decoder, see <a class="reference external" href="https://docs.python.org/3/library/json.html">their documentation</a>.</p>
+<div class="section" id="storing-and-accessing-results">
+<span id="custom-storage"></span><h3>Storing and accessing results<a class="headerlink" href="#storing-and-accessing-results" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">BaseMonitor</span></code> does provide a “default” attempt at storing the results, but for more complicated results (or just for
+more custom storage), a <code class="docutils literal notranslate"><span class="pre">format_results</span></code> method must be implemented.</p>
+<p>Building off of the previous <code class="docutils literal notranslate"><span class="pre">MyMonitor</span></code> example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">format_results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c1"># Create a custom result with json-friendly python data structures</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;my result 1&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col1</span><span class="o">.</span><span class="n">to_json</span>  <span class="c1"># store the whole column if you want!</span>
+        <span class="s1">&#39;my result mean&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span>  <span class="c1"># MyMonitor&#39;s track method returns the mean of col1</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">results</span>
+</pre></div>
+</div>
+<p>The new entry will be created on execution, and if format_results has been implemented, that resulting object will be
+used.</p>
+<p>To query the Monitor’s table for a specific result, <code class="docutils literal notranslate"><span class="pre">query</span></code> and the table’s column definitions (which are used in
+querying) are available as attributes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">monitor</span> <span class="o">=</span> <span class="n">MyMonitor</span><span class="p">()</span>
+<span class="n">query_results</span> <span class="o">=</span> <span class="n">monitor</span><span class="o">.</span><span class="n">query</span>  <span class="c1"># Returns all results as a peewee ModelSelect object</span>
+
+<span class="c1"># Further querying</span>
+<span class="n">more_specific</span> <span class="o">=</span> <span class="n">query_results</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">monitor</span><span class="o">.</span><span class="n">datetime_col</span> <span class="o">==</span> <span class="s1">&#39;2019-04-23T14:07:03.500365&#39;</span><span class="p">)</span>
+
+<span class="c1"># Format rows as a list of dictionaries</span>
+<span class="nb">list</span><span class="p">(</span><span class="n">more_specific</span><span class="o">.</span><span class="n">dicts</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If a Monitor has been defined, but has not been executed, the database table for that monitor will not exist yet.
+In this case, <code class="docutils literal notranslate"><span class="pre">get_table</span></code> will return <code class="docutils literal notranslate"><span class="pre">None</span></code> and print a message with this information.</p>
+</div>
+<p>For information on how to perform queries, see
+<a class="reference external" href="http://docs.peewee-orm.com/en/latest/peewee/querying.html#selecting-multiple-records">peewee’s documentation</a>.</p>
+</div>
+</div>
+<div class="section" id="customizing-plotting">
+<h2>Customizing Plotting<a class="headerlink" href="#customizing-plotting" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">BaseMonitor</span></code> provides some basic plotting functionality that produces <code class="docutils literal notranslate"><span class="pre">ploty</span></code> interactive plots.
+There are some additional options that can be set for controlling this basic plotting</p>
+<div class="section" id="setting-a-specific-output-file-name-or-destination">
+<h3>Setting a specific output file name or destination<a class="headerlink" href="#setting-a-specific-output-file-name-or-destination" title="Permalink to this headline">¶</a></h3>
+<p>By default, the resulting figure of a monitor derived from <code class="docutils literal notranslate"><span class="pre">BaseMonitor</span></code> will be given a name that is a combination
+of the monitor’s class name and the date that the monitor instance was created, and will be placed in the current
+working directory.</p>
+<p>To change the path of the output file, assign <code class="docutils literal notranslate"><span class="pre">output</span></code> to a directory:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyMonitor</span><span class="p">(</span><span class="n">BaseMonitor</span><span class="p">)</span>
+    <span class="n">data_model</span> <span class="o">=</span> <span class="n">MyNewModel</span>
+    <span class="o">...</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="s1">&#39;/new/path/to/file/&#39;</span>  <span class="c1"># For setting the path, but not the filename</span>
+</pre></div>
+</div>
+<p>To change the name of the file, assign <code class="docutils literal notranslate"><span class="pre">output</span></code> to a full path:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyMonitor</span><span class="p">(</span><span class="n">BaseMonitor</span><span class="p">)</span>
+    <span class="n">data_model</span> <span class="o">=</span> <span class="n">MyNewModel</span>
+    <span class="o">...</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="s1">&#39;/new/path/to/file/new_file_name.html&#39;</span>  <span class="c1"># For setting the path, but not the filename</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="adding-a-third-dimension-to-the-output">
+<h3>Adding a third dimension to the output<a class="headerlink" href="#adding-a-third-dimension-to-the-output" title="Permalink to this headline">¶</a></h3>
+<p>The basic plotting functionality of <code class="docutils literal notranslate"><span class="pre">BaseMonitor</span></code> restricts the dimensionality to 3 dimensions at the maximum (it is
+basic after all).</p>
+<p>The third dimension is a <em>color</em> dimension supports either an array of the same shape as <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>.
+To specify a color dimension to the data, simply set the <code class="docutils literal notranslate"><span class="pre">z</span></code> attribute in <code class="docutils literal notranslate"><span class="pre">define_plot</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">define_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">plottype</span> <span class="o">=</span> <span class="s1">&#39;scatter&#39;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col1</span>  <span class="c1"># [1, 2 ,3]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col2</span>  <span class="c1"># [4, 5, 6]</span>
+
+    <span class="c1"># If the color dimension is included in the data as col3:</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col3</span>
+
+    <span class="c1"># If the color dimension is not included in the data, but based on some analysis</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">some_color_array</span>  <span class="c1"># must be the same length as x and y</span>
+</pre></div>
+</div>
+<p>The third dimension can also be used to create an image plot:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">define_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">plottype</span> <span class="o">=</span> <span class="s1">&#39;image&#39;</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col1</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col2</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">image_array</span>  <span class="c1"># 2d image array of shape (y.shape, x.shape)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="adding-additional-information-to-the-hover-labels">
+<h3>Adding additional information to the hover labels<a class="headerlink" href="#adding-additional-information-to-the-hover-labels" title="Permalink to this headline">¶</a></h3>
+<p>If additional information should be displayed on hover for each data point, that information should be included the data
+retrieved by the data model.</p>
+<p>For example, if in the simple line plot created in <a class="reference internal" href="creating_monitors.html"><span class="doc">Creating New Monitors</span></a> needed to also include a “name” for each
+data point, <code class="docutils literal notranslate"><span class="pre">get_data</span></code> would need to be modified like so:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyNewModel</span><span class="p">(</span><span class="n">BaseDataModel</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">reuturn</span> <span class="p">{</span>
+            <span class="s1">&#39;col1&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+            <span class="s1">&#39;col2&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span>
+            <span class="s1">&#39;names&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;first&#39;</span><span class="p">,</span> <span class="s1">&#39;second&#39;</span><span class="p">,</span> <span class="s1">&#39;third&#39;</span><span class="p">]</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+<p>In the definition of the monitor, the new “names” column would need to be identified as a label:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyMonitor</span><span class="p">(</span><span class="n">BaseMonitor</span><span class="p">):</span>
+    <span class="n">data_model</span> <span class="o">=</span> <span class="n">MyNewModel</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;names&#39;</span><span class="p">]</span>  <span class="c1"># List of column names in data that should be used in hover labels</span>
+
+    <span class="k">def</span> <span class="nf">track</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Measure the mean of the first column&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col1</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>  <span class="c1"># Remember that data is a pandas DataFrame!</span>
+
+    <span class="k">def</span> <span class="nf">define_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plottype</span> <span class="o">=</span> <span class="s1">&#39;line&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col2</span>
+</pre></div>
+</div>
+<p>This will add each “name” to the corresponding point in the hover labels in the plotly figure.</p>
+</div>
+<div class="section" id="more-complex-plotting">
+<h3>More complex plotting<a class="headerlink" href="#more-complex-plotting" title="Permalink to this headline">¶</a></h3>
+<p>For more complex plotting, <code class="docutils literal notranslate"><span class="pre">plot</span></code> should be overridden with whatever is needed, but plotly is still required.</p>
+<p>When a new instance of a monitor is created, a plotly figure is created automatically.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If subplots are needed, the <code class="docutils literal notranslate"><span class="pre">subplots</span></code> and <code class="docutils literal notranslate"><span class="pre">subplots_layout</span></code> attributes need to be defined in the monitor class.
+This is because the plotly figure object is different for subplots.</p>
+<p>To set the monitor to use a subplots figure:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyMonitor</span><span class="p">(</span><span class="n">BaseMonitor</span><span class="p">):</span>
+    <span class="n">data_model</span> <span class="o">=</span> <span class="n">MyNewModel</span>
+    <span class="o">...</span>
+    <span class="n">subplots</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="n">subplot_layout</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>  <span class="c1"># 2x2 grid of plots</span>
+</pre></div>
+</div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">plot</span></code> method should add whatever <em>traces</em> (plotly’s term) and <em>layouts</em> necessary to that monitor figure
+attribute:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+    <span class="o">...</span>  <span class="c1"># Lot&#39;s of complicated plotting stuff that results in a &quot;plot&quot; object and a new &quot;layout&quot; object</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">figure</span><span class="o">.</span><span class="n">add_trace</span><span class="p">(</span><span class="n">plot</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">figure</span><span class="p">[</span><span class="s1">&#39;layout&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">layout</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If users want to integrate existing matplotlib plots without have to rewrite the entire plot, plotly’s <code class="docutils literal notranslate"><span class="pre">mpl_to_plotly</span></code>
+function can be used:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">plotly.tools</span> <span class="kn">as</span> <span class="nn">tls</span>
+
+<span class="n">new_plotly</span> <span class="o">=</span> <span class="n">tls</span><span class="o">.</span><span class="n">mpl_to_plotly</span><span class="p">(</span><span class="n">existing_mpl_figure</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This figure could then be assigned to the figure attribute on the monitor:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">plot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">figure</span> <span class="o">=</span> <span class="n">new_plotly</span>
+</pre></div>
+</div>
+<p>Once plotting is all done, the figure can be written to an html file (with the default or specified path and/or name)
+with the <code class="docutils literal notranslate"><span class="pre">write_figure</span></code> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">monitor</span><span class="o">.</span><span class="n">write_figure</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="creating_monitors.html" class="btn btn-neutral float-left" title="Creating New Monitors" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, James White
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

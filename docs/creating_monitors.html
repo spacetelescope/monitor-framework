@@ -1,0 +1,260 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Creating New Monitors &mdash; Monitor Framework  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Advanced Monitor Options" href="advanced_monitors.html" />
+    <link rel="prev" title="Overview" href="overview.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Monitor Framework
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Creating New Monitors</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#defining-a-new-data-model">Defining a New Data Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#defining-a-new-monitor">Defining a New Monitor</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_monitors.html">Advanced Monitor Options</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Monitor Framework</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Creating New Monitors</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/creating_monitors.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="creating-new-monitors">
+<h1>Creating New Monitors<a class="headerlink" href="#creating-new-monitors" title="Permalink to this headline">¶</a></h1>
+<p>A new monitor is created by defining a data model and monitor through building off of the <code class="docutils literal notranslate"><span class="pre">BaseDataModel</span></code> and
+<code class="docutils literal notranslate"><span class="pre">BaseMonitor</span></code> classes.</p>
+<div class="section" id="defining-a-new-data-model">
+<h2>Defining a New Data Model<a class="headerlink" href="#defining-a-new-data-model" title="Permalink to this headline">¶</a></h2>
+<p>To define a data model, construct a new class that inherits <code class="docutils literal notranslate"><span class="pre">BaseDataModel</span></code>, and implement the <code class="docutils literal notranslate"><span class="pre">get_data</span></code> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">MyNewModel</span><span class="p">(</span><span class="n">BaseDataModel</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;col1&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+            <span class="s1">&#39;col2&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]</span>
+        <span class="p">}</span>
+</pre></div>
+</div>
+<p>In this simple example, <code class="docutils literal notranslate"><span class="pre">get_data</span></code> simply returns  a dictionary that represents column-oriented data.
+However, <code class="docutils literal notranslate"><span class="pre">get_data</span></code> can return any data structure that is compatible with generating a pandas <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code>.
+The user should be careful that whatever data structure they choose to use actually results in the correct
+representation upon conversion to a <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code>, which will be accessible to the monitor through its <code class="docutils literal notranslate"><span class="pre">data</span></code>
+attribute (for more on the pandas <code class="docutils literal notranslate"><span class="pre">DataFrame</span></code> check out
+<a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/getting_started/dsintro.html#dataframe">their documentation</a>).</p>
+<p>And that’s it!</p>
+</div>
+<div class="section" id="defining-a-new-monitor">
+<h2>Defining a New Monitor<a class="headerlink" href="#defining-a-new-monitor" title="Permalink to this headline">¶</a></h2>
+<p>Once a data model is defined, a new monitor can also be defined.
+Like the data model, a new monitor is defined by constructing a class that inherits <code class="docutils literal notranslate"><span class="pre">BaseMonitor</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">BaseMonitor</span></code> has some basic functionality included at the start that users can take advantage of for simple monitors.
+However, at minimum, the <code class="docutils literal notranslate"><span class="pre">track</span></code> method must be implemented and the monitor must have a data model assigned to it.</p>
+<p>For example, to create a basic, bare-bones monitor that produces a line plot that represents the data defined in
+<code class="docutils literal notranslate"><span class="pre">MyNewModel</span></code> the following could be done:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MyMonitor</span><span class="p">(</span><span class="n">BaseMonitor</span><span class="p">):</span>
+    <span class="n">data_model</span> <span class="o">=</span> <span class="n">MyNewModel</span>
+
+    <span class="k">def</span> <span class="nf">track</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Measure the mean of the first column&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col1</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>  <span class="c1"># Remember that data is a pandas DataFrame!</span>
+
+    <span class="k">def</span> <span class="nf">define_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">plottype</span> <span class="o">=</span> <span class="s1">&#39;line&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">col2</span>
+</pre></div>
+</div>
+<p>This basic monitor will produce a simple <code class="docutils literal notranslate"><span class="pre">plotly</span></code> line graph when the <code class="docutils literal notranslate"><span class="pre">monitor</span></code> method is called.</p>
+<p>If a database has been defined, the monitor will attempt to store them in the corresponding database table, but for more
+complicated results that users wish to store, a <code class="docutils literal notranslate"><span class="pre">format_results</span></code> method will need to be implemented (see
+<a class="reference internal" href="advanced_monitors.html#custom-storage"><span class="std std-ref">Storing and accessing results</span></a>).</p>
+<p>To execute the monitor, create an instance of <code class="docutils literal notranslate"><span class="pre">MyMonitor</span></code> and execute the <code class="docutils literal notranslate"><span class="pre">monitor</span></code> method:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">monitor</span> <span class="o">=</span> <span class="n">MyMonitor</span><span class="p">()</span>
+<span class="n">monitor</span><span class="o">.</span><span class="n">monitor</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="advanced_monitors.html" class="btn btn-neutral float-right" title="Advanced Monitor Options" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="overview.html" class="btn btn-neutral float-left" title="Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, James White
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
