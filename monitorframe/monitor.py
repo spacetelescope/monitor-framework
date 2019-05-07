@@ -256,12 +256,7 @@ class BaseMonitor(MonitorInterface):
         model = self.data_model()
         self.data = model.data
 
-        # Create hover tool text
-        if self.labels:
-            self.data['hover_text'] = [
-                '<br>'.join(str(row).replace('\n', '<br>').split('<br>')[:-1])
-                for _, row in self.data[self.labels].iterrows()
-            ]
+        self.define_hover_labels()
 
         # Filter data if filter exists
         # noinspection PyNoneFunctionAssignment
@@ -334,6 +329,14 @@ class BaseMonitor(MonitorInterface):
     def define_plot(self):
         """Sets the x, y, z, and plottype attributes used in the basic plotting methods."""
         pass
+
+    def define_hover_labels(self):
+        # Create hover tool text
+        if self.labels:
+            self.data['hover_text'] = [
+                '<br>'.join(str(row).replace('\n', '<br>').split('<br>')[:-1])
+                for _, row in self.data[self.labels].iterrows()
+            ]
 
     @property
     def basic_layout(self):
