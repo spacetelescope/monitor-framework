@@ -179,6 +179,7 @@ class BaseMonitor(MonitorInterface):
     subplot_layout = None
     labels = None
     output = None
+    name = None
 
     def __init__(self):
         """Instantiation of the Monitor. Gather data, filter it, set plotting parameters."""
@@ -210,7 +211,10 @@ class BaseMonitor(MonitorInterface):
             self.figure = go.Figure()
 
         # Add date to the name of the monitor; Create a filename from the name given
-        self.name = self.__class__.__name__ + f': {self.date.date().isoformat()}'
+        if not self.name:
+            self.name = self.__class__.__name__
+
+        self.name += f': {self.date.date().isoformat()}'
         self._filename = '_'.join(self.name.split(': ')).replace(' ', '')
 
         # Set output file path

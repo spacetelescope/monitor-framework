@@ -22,4 +22,3 @@ class BaseModel(Model):
 
     datetime = DateTimeField(primary_key=True, verbose_name='Monitor execution date and time')
     result = JSONField(verbose_name='Monitoring results')
-
