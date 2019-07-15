@@ -7,23 +7,25 @@ import numpy as np
 import abc
 import warnings
 
+from itertools import repeat
 from email.mime.text import MIMEText
 from datetime import datetime
 from plotly import tools
 from typing import Union, List, Dict, Iterable, Any
+from playhouse.reflection import generate_models
+from peewee import Model, ModelSelect
 
-from monitorframe.database import BaseModel, SETTINGS
-
-ROW_DATA = List[dict]
-COL_DATA = Dict[str, list]
-VALID_GET = Union[ROW_DATA, COL_DATA]
-EMAIL_TO = Union[str, list]
+from .database import BaseModel, DATA_DB
 
 
 class MonitorInterface(abc.ABC):
 
     @abc.abstractmethod
-    def track(self):
+    def get_data(self) -> Any:
+        pass
+
+    @abc.abstractmethod
+    def track(self) -> Any:
         pass
 
     @abc.abstractmethod
@@ -38,20 +40,28 @@ class MonitorInterface(abc.ABC):
 class DataInterface(abc.ABC):
 
     @abc.abstractmethod
-    def get_data(self):
+    def get_new_data(self) -> Union[List[dict], Dict[str, list]]:
+        pass
+
+    @abc.abstractmethod
+    def ingest(self):
+        pass
+
+    @abc.abstractmethod
+    def create_model(self) -> Model:
         pass
 
 
 class PandasMeta(abc.ABCMeta):
     def __new__(mcs, classnames, bases, class_dict):
-        class_dict['get_data'] = mcs.wrap(class_dict['get_data'])
+        class_dict['get_new_data'] = mcs.wrap(class_dict['get_new_data'])
 
         return super(PandasMeta, mcs).__new__(mcs, classnames, bases, class_dict)
 
     @staticmethod
-    def wrap(get_data):
+    def wrap(get_new_data):
         def to_pandas(self):
-            data = get_data(self)
+            data = get_new_data(self)
             df = pd.DataFrame(data)
 
             return df
@@ -59,23 +69,100 @@ class PandasMeta(abc.ABCMeta):
         return to_pandas
 
 
+# noinspection PyAbstractClass
+# Partial implementation
 class BaseDataModel(DataInterface, metaclass=PandasMeta):
     """Baseclass for monitor data models.
 
     Intended to be subclassed with one required method: get_data. Results from get_data will be used to generate a
     pandas DataFrame which the monitors use for the data source.
     """
-    def __init__(self):
-        self.data = self.get_data()
+    _database = DATA_DB
 
-    @abc.abstractmethod
-    def get_data(self) -> VALID_GET:
-        """Retrieve monitor data. Should return row-wise or column-wise data."""
+    def __init__(self, find_new=True):
+        self._array_types = None
+        self.new_data = None
+        self._formatted_data = None
+
+        self.table_name = self.__class__.__name__
+
+        # Read in and ingest new data
+        if find_new:
+            self.new_data = self.get_new_data()
+            self._array_types = self._find_array_types()
+            self._formatted_data = self._format_for_ingest()
+
+        self.model = self.create_model()
+
+    # noinspection PyUnresolvedReferences
+    # noinspection PyCompatibility
+    # self.new_data will be a pandas DataFrame object
+    def _find_array_types(self):
+        """Find datatypes in the dataframe that are likely arrays of some kind."""
+        supported = [list, np.ndarray]  # Supported array types
+
+        example = self.new_data.iloc[0]  # All rows should be the same.. otherwise ingestion won't even get this far
+
+        # Assuming that "object" types that aren't strings are arrays
+        return [key for key, dtype in self.data.dtypes.iteritems() if dtype == 'O' and type(example[key]) in supported]
+
+    # noinspection PyUnresolvedReferences
+    # self.new_data will be a pandas DataFrame object
+    def _format_for_ingest(self):
+        """Format new data for ingest. Primarily, if there are arrays as elements in any column, convert those to
+        strings.
+        """
+        if self._array_types:  # If there are array elements, convert to string. Else, do nothing
+            ingestible = self.new_data.copy()
+
+            for key in self._array_types:
+                ingestible[key] = ingestible[key].astype(str)
+
+            return ingestible
+
+        return self.new_data
+
+    # noinspection PyUnresolvedReferences
+    # self._formatted_data will be a pandas DataFrame object
+    def ingest(self):
+        """Ingest new data into database."""
+        with self._database as db:
+            self._formatted_data.to_sql(self.table_name, db, if_exists='append', index=False)
+
+    def create_model(self) -> Union[Model, None]:
+        """Create model object for accessing stored data."""
+        try:
+            return generate_models(
+                self._database, literal_column_names=True, table_names=[self.table_name]
+            )[self.table_name]
+
+        except KeyError:
+            return
+
+    def query_to_pandas(self, query: ModelSelect, array_cols: list = None, array_dtypes: list = None) -> pd.DataFrame:
+        """Convert a model query to a pandas dataframe."""
+        df = pd.DataFrame(query.dicts())
+
+        if not array_cols:
+            array_cols = self._array_types  # Try to use the new data to infer what the format should be
+
+        if array_cols:
+            if not array_dtypes:
+                array_dtypes = repeat(float, len(array_cols))
+
+            # Convert array columns to numpy arrays. Assume the dtype should be a float if not specified
+            for key, dtype in zip(array_cols, array_dtypes):
+                df[key] = df[key].apply(
+                    lambda x: np.array(x.strip('[]').split(', '), dtype=float) if ',' in x
+                    else np.array(x.strip('[]').split(), dtype=float)
+                )
+
+        return df
 
 
 class Email:
     """Class representation for constructing and sending an email notification."""
-    def __init__(self, username: str, subject: str, content: str, recipients: EMAIL_TO):
+    def __init__(self, username: str, subject: str, content: str, recipients: Union[str, list]):
         self.sender = f'{username}@stsci.edu'
         self.subject = subject
         self.content = content
@@ -128,8 +215,6 @@ class BaseMonitor(MonitorInterface):
     -----------------
         find_outliers - method for identifying outlying data points. Should return a mask array.
 
-        filter_data - method for filtering the retrieved data for monitoring purposes.
-
         define_plot - method for setting arguments to be used with the basic plotting methods
 
 
@@ -175,33 +260,33 @@ class BaseMonitor(MonitorInterface):
     """
     data_model = None
     notification_settings = None
-    subplots = False
-    subplot_layout = None
-    labels = None
     output = None
     name = None
 
-    def __init__(self):
-        """Instantiation of the Monitor. Gather data, filter it, set plotting parameters."""
-        self.x = None
-        self.y = None
-        self.z = None
-        self.plottype = None
+    # Plot stuff
+    subplots = False
+    subplot_layout = None
+    labels = None
+    plottype = None
+    x = None
+    y = None
+    z = None
+
+    def __init__(self, find_new_data=True):
+        """Initialization of the Monitor."""
         self.hover_text = None
         self.mailer = None
         self.results = None
         self.outliers = None
         self.notification = None
         self.data = None
-        self.filtered_data = None
         self._table = None
         self.datetimecol = None
         self.resultcol = None
 
+        self.model = self.data_model(find_new=find_new_data)
         self.date = datetime.today()
-
-        if SETTINGS['database']:
-            self._define_table()
+        self._define_results_table()
 
         # Create figure; If a subplot is required, create a subplot figure
         if self.subplots:
@@ -215,6 +300,8 @@ class BaseMonitor(MonitorInterface):
             self.name = self.__class__.__name__
 
         self.name += f': {self.date.date().isoformat()}'
+
+        # For the filename, replace the colon with an underscore and remove any spaces
         self._filename = '_'.join(self.name.split(': ')).replace(' ', '')
 
         # Set output file path
@@ -243,39 +330,34 @@ class BaseMonitor(MonitorInterface):
                 self.notification_settings['recipients']
             )
 
-    def _define_table(self):
+    def _define_results_table(self):
         self._table = BaseModel
         self._table.define_table_name(self.__class__.__name__)
         self.datetime_col = self._table.datetime
         self.result_col = self._table.result
 
     @property
-    def query(self):
+    def results_table(self):
         if not self._table.table_exists():
             return
 
         return self._table.select()
 
     def initialize_data(self):
-        model = self.data_model()
-        self.data = model.data
-
+        """Retrieve monitor data and prepare figure options."""
+        self.data = self.get_data()
         self.define_hover_labels()
-
-        # Filter data if filter exists
-        # noinspection PyNoneFunctionAssignment
-        self.filtered_data = self.filter_data()
-
         self.define_plot()
 
     def run_analysis(self):
+        """Execute tracking, outlier detection, and prepare notification."""
         self.results = self.track()
-        # noinspection PyNoneFunctionAssignment
         self.outliers = self.find_outliers()
         self.notification = self.set_notification()
         self._set_mailer()
 
     def write_figure(self):
+        """Plot figure and write to html file."""
         off.plot(self.figure, filename=self.output, auto_open=False)
 
     def plot(self):
@@ -322,12 +404,8 @@ class BaseMonitor(MonitorInterface):
         else:
             pass
 
-    def find_outliers(self):
+    def find_outliers(self) -> pd.DataFrame:
         """Returns mask that defines outliers. Sets the outliers attribute."""
-        pass
-
-    def filter_data(self):
-        """Returns a filtered dataframe. Sets the filtered_data attribute."""
         pass
 
     def define_plot(self):
@@ -344,7 +422,7 @@ class BaseMonitor(MonitorInterface):
 
     @property
     def basic_layout(self):
-        """Return a basic layout. Requiers x and y attributes to be set."""
+        """Return a basic layout. Requires x and y attributes to be set."""
         return go.Layout(
             title=self.name,
             hovermode='closest',
@@ -393,7 +471,7 @@ class BaseMonitor(MonitorInterface):
             self.figure.add_trace(scatter)
 
     def basic_image(self):
-        """Create a heatmap plot and update the figure attribute. Requires that x, y and z attributes are set.
+        """Create a heat-map plot and update the figure attribute. Requires that x, y and z attributes are set.
         z must be a 2D image.
         """
         image_plot = go.Heatmap(
@@ -428,9 +506,11 @@ class BaseMonitor(MonitorInterface):
                 )
 
     def format_results(self):
+        """Format results for storage."""
         pass
 
     def store_results(self):
+        """Store monitoring results. If not using the results database, this method must be overridden."""
         if self._table is not None:
             # noinspection PyNoneFunctionAssignment
             jsonified = self.format_results()
