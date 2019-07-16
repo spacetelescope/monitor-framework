@@ -12,10 +12,9 @@ from email.mime.text import MIMEText
 from datetime import datetime
 from plotly import tools
 from typing import Union, List, Dict, Iterable, Any
-from playhouse.reflection import generate_models
-from peewee import Model, ModelSelect
+import peewee
 
-from .database import BaseModel, DATA_DB
+from .database import BaseResultsModel, DATA_DB, MODELS
 
 
 class MonitorInterface(abc.ABC):
@@ -48,7 +47,7 @@ class DataInterface(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def create_model(self) -> Model:
+    def create_model(self) -> peewee.Model:
         pass
 
 
@@ -129,17 +128,15 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
         with self._database as db:
             self._formatted_data.to_sql(self.table_name, db, if_exists='append', index=False)
 
-    def create_model(self) -> Union[Model, None]:
+    def get_model(self) -> Union[peewee.Model, None]:
         """Create model object for accessing stored data."""
         try:
-            return generate_models(
-                self._database, literal_column_names=True, table_names=[self.table_name]
-            )[self.table_name]
+            return MODELS[self.table_name]
 
         except KeyError:
             return
 
-    def query_to_pandas(self, query: ModelSelect, array_cols: list = None, array_dtypes: list = None) -> pd.DataFrame:
+    def query_to_pandas(self, query: peewee.ModelSelect, array_cols: list = None, array_dtypes: list = None) -> pd.DataFrame:
         """Convert a model query to a pandas dataframe."""
         df = pd.DataFrame(query.dicts())
 
@@ -331,7 +328,7 @@ class BaseMonitor(MonitorInterface):
             )
 
     def _define_results_table(self):
-        self._table = BaseModel
+        self._table = BaseResultsModel
         self._table.define_table_name(self.__class__.__name__)
         self.datetime_col = self._table.datetime
         self.result_col = self._table.result

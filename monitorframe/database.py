@@ -1,5 +1,6 @@
 from peewee import Model, DateTimeField
 from playhouse.sqlite_ext import JSONField, SqliteExtDatabase
+from playhouse.reflection import generate_models
 
 from . import SETTINGS
 
@@ -10,7 +11,7 @@ DATA_DB = SqliteExtDatabase(**DATA_DB_SETTINGS)
 RESULTS_DB = SqliteExtDatabase(**RESULTS_DB_SETTINGS)
 
 
-class BaseModel(Model):
+class BaseResultsModel(Model):
 
     class Meta:
         database = RESULTS_DB
@@ -22,3 +23,6 @@ class BaseModel(Model):
 
     datetime = DateTimeField(primary_key=True, verbose_name='Monitor execution date and time')
     result = JSONField(verbose_name='Monitoring results')
+
+
+MODELS = generate_models(DATA_DB, literal_column_names=True)
