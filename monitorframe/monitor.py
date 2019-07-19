@@ -136,7 +136,8 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
         except KeyError:
             return
 
-    def query_to_pandas(self, query: peewee.ModelSelect, array_cols: list = None, array_dtypes: list = None) -> pd.DataFrame:
+    def query_to_pandas(self, query: peewee.ModelSelect, array_cols: list = None, array_dtypes: list = None
+                        ) -> pd.DataFrame:
         """Convert a model query to a pandas dataframe."""
         df = pd.DataFrame(query.dicts())
 
