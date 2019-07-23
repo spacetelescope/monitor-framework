@@ -1,20 +1,17 @@
-import plotly.offline as off
-import plotly.graph_objs as go
-import pandas as pd
-import smtplib
-import os
-import numpy as np
 import abc
+import numpy as np
+import os
+import pandas as pd
+import plotly.graph_objs as go
+import plotly.offline as off
 import warnings
 
-from itertools import repeat
-from email.mime.text import MIMEText
 from datetime import datetime
 from plotly import tools
-from typing import Union, List, Dict, Iterable, Any
-import peewee
+from typing import Iterable, Any
 
-from .database import BaseResultsModel, DATA_DB, MODELS
+from .database import BaseResultsModel
+from .notifications import Email
 
 
 class MonitorInterface(abc.ABC):
@@ -34,169 +31,6 @@ class MonitorInterface(abc.ABC):
     @abc.abstractmethod
     def store_results(self):
         pass
-
-
-class DataInterface(abc.ABC):
-
-    @abc.abstractmethod
-    def get_new_data(self) -> Union[List[dict], Dict[str, list]]:
-        pass
-
-    @abc.abstractmethod
-    def ingest(self):
-        pass
-
-    @abc.abstractmethod
-    def create_model(self) -> peewee.Model:
-        pass
-
-
-class PandasMeta(abc.ABCMeta):
-    def __new__(mcs, classnames, bases, class_dict):
-        class_dict['get_new_data'] = mcs.wrap(class_dict['get_new_data'])
-
-        return super(PandasMeta, mcs).__new__(mcs, classnames, bases, class_dict)
-
-    @staticmethod
-    def wrap(get_new_data):
-        def to_pandas(self):
-            data = get_new_data(self)
-            df = pd.DataFrame(data)
-
-            return df
-
-        return to_pandas
-
-
-# noinspection PyAbstractClass
-# Partial implementation
-class BaseDataModel(DataInterface, metaclass=PandasMeta):
-    """Baseclass for monitor data models.
-
-    Intended to be subclassed with one required method: get_data. Results from get_data will be used to generate a
-    pandas DataFrame which the monitors use for the data source.
-    """
-    _database = DATA_DB
-
-    def __init__(self, find_new=True):
-        self._array_types = None
-        self.new_data = None
-        self._formatted_data = None
-
-        self.table_name = self.__class__.__name__
-
-        # Read in and ingest new data
-        if find_new:
-            self.new_data = self.get_new_data()
-            self._array_types = self._find_array_types()
-            self._formatted_data = self._format_for_ingest()
-
-        self.model = self.create_model()
-
-    # noinspection PyUnresolvedReferences
-    # noinspection PyCompatibility
-    # self.new_data will be a pandas DataFrame object
-    def _find_array_types(self):
-        """Find datatypes in the dataframe that are likely arrays of some kind."""
-        supported = [list, np.ndarray]  # Supported array types
-
-        example = self.new_data.iloc[0]  # All rows should be the same.. otherwise ingestion won't even get this far
-
-        # Assuming that "object" types that aren't strings are arrays
-        return [key for key, dtype in self.data.dtypes.iteritems() if dtype == 'O' and type(example[key]) in supported]
-
-    # noinspection PyUnresolvedReferences
-    # self.new_data will be a pandas DataFrame object
-    def _format_for_ingest(self):
-        """Format new data for ingest. Primarily, if there are arrays as elements in any column, convert those to
-        strings.
-        """
-        if self._array_types:  # If there are array elements, convert to string. Else, do nothing
-            ingestible = self.new_data.copy()
-
-            for key in self._array_types:
-                ingestible[key] = ingestible[key].astype(str)
-
-            return ingestible
-
-        return self.new_data
-
-    # noinspection PyUnresolvedReferences
-    # self._formatted_data will be a pandas DataFrame object
-    def ingest(self):
-        """Ingest new data into database."""
-        with self._database as db:
-            self._formatted_data.to_sql(self.table_name, db, if_exists='append', index=False)
-
-    def get_model(self) -> Union[peewee.Model, None]:
-        """Create model object for accessing stored data."""
-        try:
-            return MODELS[self.table_name]
-
-        except KeyError:
-            return
-
-    def query_to_pandas(self, query: peewee.ModelSelect, array_cols: list = None, array_dtypes: list = None
-                        ) -> pd.DataFrame:
-        """Convert a model query to a pandas dataframe."""
-        df = pd.DataFrame(query.dicts())
-
-        if not array_cols:
-            array_cols = self._array_types  # Try to use the new data to infer what the format should be
-
-        if array_cols:
-            if not array_dtypes:
-                array_dtypes = repeat(float, len(array_cols))
-
-            # Convert array columns to numpy arrays. Assume the dtype should be a float if not specified
-            for key, dtype in zip(array_cols, array_dtypes):
-                df[key] = df[key].apply(
-                    lambda x: np.array(x.strip('[]').split(', '), dtype=float) if ',' in x
-                    else np.array(x.strip('[]').split(), dtype=float)
-                )
-
-        return df
-
-
-class Email:
-    """Class representation for constructing and sending an email notification."""
-    def __init__(self, username: str, subject: str, content: str, recipients: Union[str, list]):
-        self.sender = f'{username}@stsci.edu'
-        self.subject = subject
-        self.content = content
-        self.recipients = self._set_recipients(recipients)
-
-        self.message = self.build_message()
-
-    @staticmethod
-    def _set_recipients(recipients_input):
-        """Set recipient or format list of recipients."""
-        if isinstance(recipients_input, Iterable):
-            return ''.join(recipients_input)
-
-        elif isinstance(recipients_input, str):
-            return recipients_input
-
-        else:
-            raise TypeError(
-                f'recipients must be either iterable or a string. Recieved {type(recipients_input)} instead.'
-            )
-
-    def build_message(self) -> MIMEText:
-        """Create MIMEText object."""
-
-        message = MIMEText(self.content)
-        message['Subject'] = self.subject
-        message['From'] = self.sender
-        message['To'] = self.recipients
-
-        return message
-
-    def send(self):
-        """Send constructed email."""
-
-        with smtplib.SMTP('smtp.stsci.edu') as mailer:
-            mailer.send_message(self.message)
 
 
 class BaseMonitor(MonitorInterface):

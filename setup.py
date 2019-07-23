@@ -12,7 +12,7 @@ setup_parameters = dict(
 
 setup(
     name='monitorframe',  # Required
-    version='0.0.4',  # Required
+    version='1.0.0',  # Required
     description='Framework for building instrument monitors.',  # Required
     author='James White; Space Telescope Science Institute',
     author_email='jwhite@stsci.edu',
@@ -25,6 +25,6 @@ setup(
     ],
     
     python_requires='~=3.6',
-    install_requires=['pandas', 'plotly', 'peewee', 'numpy', 'pyyaml'],
+    install_requires=['pandas', 'plotly', 'peewee', 'numpy', 'pyyaml', 'pytest', 'coverage'],
     **setup_parameters
 )
