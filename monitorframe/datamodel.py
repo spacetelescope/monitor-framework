@@ -22,6 +22,9 @@ class DataInterface(abc.ABC):
 
 
 class PandasMeta(abc.ABCMeta):
+    """Meta class for BaseDataModel that wraps the get_new_data method to return a pandas dataframe created from the
+     get_new_data method.
+     """
     def __new__(mcs, classnames, bases, class_dict):
         class_dict['get_new_data'] = mcs.wrap(class_dict['get_new_data'])
 
@@ -43,10 +46,11 @@ class PandasMeta(abc.ABCMeta):
 class BaseDataModel(DataInterface, metaclass=PandasMeta):
     """Baseclass for monitor data models.
 
-    Intended to be subclassed with one required method: get_data. Results from get_data will be used to generate a
+    Intended to be subclassed with one required method: get_new_data. Results from get_data will be used to generate a
     pandas DataFrame which the monitors use for the data source.
     """
     _database = DATA_DB
+    primary_key = None
 
     def __init__(self, find_new=True):
         self._array_types = None
@@ -60,6 +64,17 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
             self.new_data = self.get_new_data()
             self._array_types = self._find_array_types()
             self._formatted_data = self._format_for_ingest()
+
+    @property
+    def model(self):
+        """Return the database table model object if the table exists in the database."""
+        try:
+            return generate_models(
+                self._database, literal_column_names=True, table_names=[self.table_name]
+            )[self.table_name]
+
+        except KeyError:
+            return
 
     # noinspection PyUnresolvedReferences
     # noinspection PyCompatibility
@@ -91,16 +106,20 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
 
         return self.new_data
 
-    @property
-    def model(self):
-        """Return the database table model object if the table exists in the database."""
-        try:
-            return generate_models(
-                self._database, literal_column_names=True, table_names=[self.table_name]
-            )[self.table_name]
+    def _set_primary_key(self):
+        # Create SQL command based on dataframe
+        insert = pd.io.sql.get_schema(self._formatted_data, self.table_name)
 
-        except KeyError:
-            return
+        # Find where the pimary key is in the sql string
+        key_loc = insert.index(self.primary_key)  # Raise a ValueError if the key isn't found
+        end_loc = insert[key_loc:].find(',')  # sql syntax: "column name" dtype,
+        replace_string = insert[key_loc: key_loc + end_loc]
+
+        insert = insert.replace(replace_string, replace_string + ' PRIMARY KEY')
+
+        # Create the table with the primary key
+        with self._database as db:
+            db.execute_sql(insert)
 
     @abc.abstractmethod
     def get_new_data(self) -> Union[List[dict], Dict[str, list]]:
@@ -111,6 +130,11 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
     # self._formatted_data will be a pandas DataFrame object
     def ingest(self):
         """Ingest new data into database."""
+        # If a primary key is specified and the table doesn't exist, create the table with the primary key
+        if self.primary_key and not self._database.table_exists(self.table_name):
+            self._set_primary_key()
+
+        # Insert the dataframe into the database
         with self._database as db:
             self._formatted_data.to_sql(self.table_name, db, if_exists='append', index=False)
 
@@ -129,8 +153,8 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
             # Convert array columns to numpy arrays. Assume the dtype should be a float if not specified
             for key, dtype in zip(array_cols, array_dtypes):
                 df[key] = df[key].apply(
-                    lambda x: np.array(x.strip('[]').split(', '), dtype=float) if ',' in x
-                    else np.array(x.strip('[]').split(), dtype=float)
+                    lambda x: np.array(x.strip('[]').split(', '), dtype=dtype) if ',' in x
+                    else np.array(x.strip('[]').split(), dtype=dtype)
                 )
 
         return df

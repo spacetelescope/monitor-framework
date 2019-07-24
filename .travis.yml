@@ -1,0 +1,50 @@
+language: python
+python: "3.7"
+
+compiler: gcc
+
+# Setting sudo to false opts in to Travis-CI container-based builds.
+sudo: false
+
+# The apt packages below are needed for sphinx builds, which can no longer be installed with sudo apt-get.
+addons:
+    apt:
+        packages:
+            - graphviz
+            - texlive-latex-extra
+            - dvipng
+
+os: linux
+
+env:
+    global:
+        # SET DEFAULTS TO AVOID REPEATING IN MOST CASES
+        - MONITOR_CONFIG='/home/travis/build/spacetelescope/cosmo/tests/cosmoconfig_test.yaml'
+
+install:
+    # USE UTF8 ENCODING. SHOULD BE DEFAULT, BUT THIS IS INSURANCE AGAINST FUTURE CHANGES
+    - export PYTHONIOENCODING=UTF8
+
+    # Install conda
+    - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+    - bash miniconda.sh -b -p $HOME/miniconda
+    - export PATH="$HOME/miniconda/bin:$PATH"
+    - hash -r
+    - conda config --set always_yes yes --set changeps1 no
+    - conda config --add channels http://ssb.stsci.edu/astroconda
+    - conda update -q conda  # Brute update base packages
+    - conda info -a # Check the environment in case there are any issues
+
+    # Create and activate the test environment
+    - conda create --q -n test python=$TRAVIS_PYTHON_VERSION $AP_SELECT $NP_SELECT $CR_SELECT stsci coverage
+    - source activate test
+
+    # Codecov
+    - pip install codecov
+
+    # Install package with pip
+    - pip install .
+
+script: coverage run -m pytest
+
+after_success: codecov
