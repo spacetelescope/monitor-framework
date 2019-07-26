@@ -1,29 +1,26 @@
-import plotly.offline as off
-import plotly.graph_objs as go
-import pandas as pd
-import smtplib
-import os
-import numpy as np
 import abc
+import os
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.express as px
 import warnings
 
-from email.mime.text import MIMEText
 from datetime import datetime
-from plotly import tools
-from typing import Union, List, Dict, Iterable, Any
+from plotly.subplots import make_subplots
+from typing import Iterable, Any
 
-from monitorframe.database import BaseModel, SETTINGS
-
-ROW_DATA = List[dict]
-COL_DATA = Dict[str, list]
-VALID_GET = Union[ROW_DATA, COL_DATA]
-EMAIL_TO = Union[str, list]
+from .database import BaseResultsModel
+from .notifications import Email
 
 
 class MonitorInterface(abc.ABC):
 
     @abc.abstractmethod
-    def track(self):
+    def get_data(self) -> Any:
+        pass
+
+    @abc.abstractmethod
+    def track(self) -> Any:
         pass
 
     @abc.abstractmethod
@@ -33,85 +30,6 @@ class MonitorInterface(abc.ABC):
     @abc.abstractmethod
     def store_results(self):
         pass
-
-
-class DataInterface(abc.ABC):
-
-    @abc.abstractmethod
-    def get_data(self):
-        pass
-
-
-class PandasMeta(abc.ABCMeta):
-    def __new__(mcs, classnames, bases, class_dict):
-        class_dict['get_data'] = mcs.wrap(class_dict['get_data'])
-
-        return super(PandasMeta, mcs).__new__(mcs, classnames, bases, class_dict)
-
-    @staticmethod
-    def wrap(get_data):
-        def to_pandas(self):
-            data = get_data(self)
-            df = pd.DataFrame(data)
-
-            return df
-
-        return to_pandas
-
-
-class BaseDataModel(DataInterface, metaclass=PandasMeta):
-    """Baseclass for monitor data models.
-
-    Intended to be subclassed with one required method: get_data. Results from get_data will be used to generate a
-    pandas DataFrame which the monitors use for the data source.
-    """
-    def __init__(self):
-        self.data = self.get_data()
-
-    @abc.abstractmethod
-    def get_data(self) -> VALID_GET:
-        """Retrieve monitor data. Should return row-wise or column-wise data."""
-
-
-class Email:
-    """Class representation for constructing and sending an email notification."""
-    def __init__(self, username: str, subject: str, content: str, recipients: EMAIL_TO):
-        self.sender = f'{username}@stsci.edu'
-        self.subject = subject
-        self.content = content
-        self.recipients = self._set_recipients(recipients)
-
-        self.message = self.build_message()
-
-    @staticmethod
-    def _set_recipients(recipients_input):
-        """Set recipient or format list of recipients."""
-        if isinstance(recipients_input, Iterable):
-            return ''.join(recipients_input)
-
-        elif isinstance(recipients_input, str):
-            return recipients_input
-
-        else:
-            raise TypeError(
-                f'recipients must be either iterable or a string. Recieved {type(recipients_input)} instead.'
-            )
-
-    def build_message(self) -> MIMEText:
-        """Create MIMEText object."""
-
-        message = MIMEText(self.content)
-        message['Subject'] = self.subject
-        message['From'] = self.sender
-        message['To'] = self.recipients
-
-        return message
-
-    def send(self):
-        """Send constructed email."""
-
-        with smtplib.SMTP('smtp.stsci.edu') as mailer:
-            mailer.send_message(self.message)
 
 
 class BaseMonitor(MonitorInterface):
@@ -127,8 +45,6 @@ class BaseMonitor(MonitorInterface):
     Optional methods:
     -----------------
         find_outliers - method for identifying outlying data points. Should return a mask array.
-
-        filter_data - method for filtering the retrieved data for monitoring purposes.
 
         define_plot - method for setting arguments to be used with the basic plotting methods
 
@@ -175,37 +91,36 @@ class BaseMonitor(MonitorInterface):
     """
     data_model = None
     notification_settings = None
-    subplots = False
-    subplot_layout = None
-    labels = None
     output = None
     name = None
 
-    def __init__(self):
-        """Instantiation of the Monitor. Gather data, filter it, set plotting parameters."""
-        self.x = None
-        self.y = None
-        self.z = None
-        self.plottype = None
-        self.hover_text = None
+    # Plot stuff
+    subplots = False
+    subplot_layout = None
+    labels = None
+    plottype = None
+    x = None
+    y = None
+    z = None
+
+    def __init__(self, find_new_data: bool = True):
+        """Initialization of the Monitor."""
         self.mailer = None
         self.results = None
         self.outliers = None
         self.notification = None
         self.data = None
-        self.filtered_data = None
         self._table = None
         self.datetimecol = None
         self.resultcol = None
 
+        self.model = self.data_model(find_new=find_new_data)
         self.date = datetime.today()
-
-        if SETTINGS['database']:
-            self._define_table()
+        self._define_results_table()
 
         # Create figure; If a subplot is required, create a subplot figure
         if self.subplots:
-            self.figure = tools.make_subplots(*self.subplot_layout)
+            self.figure = make_subplots(*self.subplot_layout)
 
         else:
             self.figure = go.Figure()
@@ -215,6 +130,8 @@ class BaseMonitor(MonitorInterface):
             self.name = self.__class__.__name__
 
         self.name += f': {self.date.date().isoformat()}'
+
+        # For the filename, replace the colon with an underscore and remove any spaces
         self._filename = '_'.join(self.name.split(': ')).replace(' ', '')
 
         # Set output file path
@@ -243,53 +160,47 @@ class BaseMonitor(MonitorInterface):
                 self.notification_settings['recipients']
             )
 
-    def _define_table(self):
-        self._table = BaseModel
+    def _define_results_table(self):
+        self._table = BaseResultsModel
         self._table.define_table_name(self.__class__.__name__)
         self.datetime_col = self._table.datetime
         self.result_col = self._table.result
 
     @property
-    def query(self):
+    def results_table(self):
         if not self._table.table_exists():
             return
 
         return self._table.select()
 
     def initialize_data(self):
-        model = self.data_model()
-        self.data = model.data
-
+        """Retrieve monitor data and prepare figure options."""
+        self.data = self.get_data()
         self.define_hover_labels()
 
-        # Filter data if filter exists
-        # noinspection PyNoneFunctionAssignment
-        self.filtered_data = self.filter_data()
-
-        self.define_plot()
-
     def run_analysis(self):
+        """Execute tracking, outlier detection, and prepare notification."""
         self.results = self.track()
-        # noinspection PyNoneFunctionAssignment
         self.outliers = self.find_outliers()
         self.notification = self.set_notification()
         self._set_mailer()
 
     def write_figure(self):
-        off.plot(self.figure, filename=self.output, auto_open=False)
+        """Plot figure and write to html file."""
+        self.figure.write_html(self.output)
 
     def plot(self):
         """Create plots and update figure attribute."""
         if self.plottype == 'scatter':
             self.basic_scatter()
 
-        elif self.plottype == 'line':
+        if self.plottype == 'line':
             self.basic_line()
 
-        else:
+        if self.plottype == 'image':
             self.basic_image()
 
-        self.figure['layout'].update(self.basic_layout)
+        self.figure.update_layout(self.basic_layout)
 
     def notify(self):
         """Send notification email."""
@@ -322,16 +233,8 @@ class BaseMonitor(MonitorInterface):
         else:
             pass
 
-    def find_outliers(self):
+    def find_outliers(self) -> pd.DataFrame:
         """Returns mask that defines outliers. Sets the outliers attribute."""
-        pass
-
-    def filter_data(self):
-        """Returns a filtered dataframe. Sets the filtered_data attribute."""
-        pass
-
-    def define_plot(self):
-        """Sets the x, y, z, and plottype attributes used in the basic plotting methods."""
         pass
 
     def define_hover_labels(self):
@@ -344,69 +247,62 @@ class BaseMonitor(MonitorInterface):
 
     @property
     def basic_layout(self):
-        """Return a basic layout. Requiers x and y attributes to be set."""
+        """Return a basic layout. Requires x and y attributes to be set."""
         return go.Layout(
             title=self.name,
             hovermode='closest',
-            xaxis=dict(title=self.x.name),
-            yaxis=dict(title=self.y.name),
-
         )
 
     def basic_scatter(self):
         """Create a scatter plot."""
-        self._basic_scatter('markers')
-
-    def basic_line(self):
-        """Create a line plot."""
-        self._basic_scatter('lines')
-
-    def _basic_scatter(self, mode: str):
-        """Create Scatter trace object. Update the figure attribute. Requires that x and y attributes are set."""
-        scatter = go.Scatter(
+        self.figure = px.scatter(
+            self.data,
             x=self.x,
             y=self.y,
-            mode=mode,
-            marker=dict(
-                color=self.z,
-                colorscale='Viridis',
-                colorbar=dict(len=0.75, title=self.z.name),
-                showscale=True
-            ) if self.z is not None else None,  # z is not used as a spatial dimension, but as a color dimension.
-            name='Monitor',
-            text=self.data.hover_text,
+            color=self.z,
+            color_continuous_scale=px.colors.sequential.Viridis,
+            hover_data=self.labels,
         )
 
         if self.outliers is not None:
-            outliers = go.Scatter(
-                x=self.x[self.outliers],
-                y=self.y[self.outliers],
+            self.figure.add_scatter(
+                x=self.data[self.x][self.outliers],
+                y=self.data[self.y][self.outliers],
                 mode='markers',
-                marker=dict(color='red'),
+                marker=dict(color='red', opacity=0.7, size=8),
                 name='Outliers',
-                text=self.data.hover_text[self.outliers],
+                hovertext=self.data.hover_text[self.outliers],
+                hoverinfo='text'
             )
 
-            self.figure.add_traces([scatter, outliers])
+        self.figure.update_layout(
+            coloraxis_colorbar_len=0.8,
+            coloraxis_colorbar_yanchor='bottom',
+            coloraxis_colorbar_y=0
+        )
 
-        else:
-            self.figure.add_trace(scatter)
+    def basic_line(self):
+        """Create a line plot."""
+        self.figure = px.line(
+            self.data,
+            x=self.x,
+            y=self.y,
+            color=self.z,
+            hover_data=self.labels,
+        )
 
     def basic_image(self):
-        """Create a heatmap plot and update the figure attribute. Requires that x, y and z attributes are set.
+        """Create a heat-map plot and update the figure attribute. Requires that x, y and z attributes are set.
         z must be a 2D image.
         """
-        image_plot = go.Heatmap(
+        self.figure = px.density_heatmap(
+            self.data,
             x=self.x,
             y=self.y,
             z=self.z,
-            colorscale='Viridis',
-            zmin=0,
-            zmax=np.median(self.z),
-            zsmooth='best'
+            color_continuous_scale=px.colors.sequential.Viridis,
+            hover_data=self.labels,
         )
-
-        self.figure.add_trace(image_plot)
 
     def _store_in_db(self, results):
         if isinstance(results, Iterable):
@@ -428,9 +324,11 @@ class BaseMonitor(MonitorInterface):
                 )
 
     def format_results(self):
+        """Format results for storage."""
         pass
 
     def store_results(self):
+        """Store monitoring results. If not using the results database, this method must be overridden."""
         if self._table is not None:
             # noinspection PyNoneFunctionAssignment
             jsonified = self.format_results()
