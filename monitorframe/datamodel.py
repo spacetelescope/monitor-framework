@@ -53,17 +53,12 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
     primary_key = None
 
     def __init__(self, find_new=True):
-        self._array_types = None
         self.new_data = None
-        self._formatted_data = None
-
         self.table_name = self.__class__.__name__
 
         # Read in and ingest new data
         if find_new:
             self.new_data = self.get_new_data()
-            self._array_types = self._find_array_types()
-            self._formatted_data = self._format_for_ingest()
 
     @property
     def model(self):
@@ -79,32 +74,40 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
     # noinspection PyUnresolvedReferences
     # noinspection PyCompatibility
     # self.new_data will be a pandas DataFrame object
-    def _find_array_types(self):
+    @property
+    def _array_types(self):
         """Find datatypes in the dataframe that are likely arrays of some kind."""
-        supported = [list, np.ndarray]  # Supported array types
+        if self.new_data is not None:
+            supported = [list, np.ndarray]  # Supported array types
+            example = self.new_data.iloc[0]  # All rows should be the same.. otherwise ingestion won't even get this far
 
-        example = self.new_data.iloc[0]  # All rows should be the same.. otherwise ingestion won't even get this far
+            # Assuming that "object" types that aren't strings are arrays
+            return [
+                key for key, dtype in self.new_data.dtypes.iteritems()
+                if dtype == 'O' and type(example[key]) in supported
+            ]
 
-        # Assuming that "object" types that aren't strings are arrays
-        return [
-            key for key, dtype in self.new_data.dtypes.iteritems() if dtype == 'O' and type(example[key]) in supported
-        ]
+        return
 
     # noinspection PyUnresolvedReferences
     # self.new_data will be a pandas DataFrame object
-    def _format_for_ingest(self):
+    @property
+    def _formatted_data(self):
         """Format new data for ingest. Primarily, if there are arrays as elements in any column, convert those to
         strings.
         """
-        if self._array_types:  # If there are array elements, convert to string. Else, do nothing
-            ingestible = self.new_data.copy()
+        if self.new_data is not None:
+            if self._array_types:  # If there are array elements, convert to string. Else, do nothing
+                ingestible = self.new_data.copy()
 
-            for key in self._array_types:
-                ingestible[key] = ingestible[key].astype(str)
+                for key in self._array_types:
+                    ingestible[key] = ingestible[key].astype(str)
 
-            return ingestible
+                return ingestible
 
-        return self.new_data
+            return self.new_data
+
+        return
 
     def _set_primary_key(self):
         # Create SQL command based on dataframe

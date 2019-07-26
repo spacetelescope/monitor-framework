@@ -6,7 +6,8 @@ setup_parameters = dict(
     package_dir={
         'monitorframe': 'monitorframe',
         'monitorframe.monitor': 'monitorframe/monitor',
-        'monitorframe.database': 'monitorframe/database'
+        'monitorframe.database': 'monitorframe/database',
+        'monitorframe.datamodel': 'monitorframe/datamodel'
     }
 )
 

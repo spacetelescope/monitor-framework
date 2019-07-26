@@ -1,13 +1,12 @@
 import abc
-import numpy as np
 import os
 import pandas as pd
-import plotly.graph_objs as go
-import plotly.offline as off
+import plotly.graph_objects as go
+import plotly.express as px
 import warnings
 
 from datetime import datetime
-from plotly import tools
+from plotly.subplots import make_subplots
 from typing import Iterable, Any
 
 from .database import BaseResultsModel
@@ -104,9 +103,8 @@ class BaseMonitor(MonitorInterface):
     y = None
     z = None
 
-    def __init__(self, find_new_data=True):
+    def __init__(self, find_new_data: bool = True):
         """Initialization of the Monitor."""
-        self.hover_text = None
         self.mailer = None
         self.results = None
         self.outliers = None
@@ -122,7 +120,7 @@ class BaseMonitor(MonitorInterface):
 
         # Create figure; If a subplot is required, create a subplot figure
         if self.subplots:
-            self.figure = tools.make_subplots(*self.subplot_layout)
+            self.figure = make_subplots(*self.subplot_layout)
 
         else:
             self.figure = go.Figure()
@@ -179,7 +177,6 @@ class BaseMonitor(MonitorInterface):
         """Retrieve monitor data and prepare figure options."""
         self.data = self.get_data()
         self.define_hover_labels()
-        self.define_plot()
 
     def run_analysis(self):
         """Execute tracking, outlier detection, and prepare notification."""
@@ -190,20 +187,20 @@ class BaseMonitor(MonitorInterface):
 
     def write_figure(self):
         """Plot figure and write to html file."""
-        off.plot(self.figure, filename=self.output, auto_open=False)
+        self.figure.write_html(self.output)
 
     def plot(self):
         """Create plots and update figure attribute."""
         if self.plottype == 'scatter':
             self.basic_scatter()
 
-        elif self.plottype == 'line':
+        if self.plottype == 'line':
             self.basic_line()
 
-        else:
+        if self.plottype == 'image':
             self.basic_image()
 
-        self.figure['layout'].update(self.basic_layout)
+        self.figure.update_layout(self.basic_layout)
 
     def notify(self):
         """Send notification email."""
@@ -240,10 +237,6 @@ class BaseMonitor(MonitorInterface):
         """Returns mask that defines outliers. Sets the outliers attribute."""
         pass
 
-    def define_plot(self):
-        """Sets the x, y, z, and plottype attributes used in the basic plotting methods."""
-        pass
-
     def define_hover_labels(self):
         # Create hover tool text
         if self.labels:
@@ -258,65 +251,58 @@ class BaseMonitor(MonitorInterface):
         return go.Layout(
             title=self.name,
             hovermode='closest',
-            xaxis=dict(title=self.x.name),
-            yaxis=dict(title=self.y.name),
-
         )
 
     def basic_scatter(self):
         """Create a scatter plot."""
-        self._basic_scatter('markers')
-
-    def basic_line(self):
-        """Create a line plot."""
-        self._basic_scatter('lines')
-
-    def _basic_scatter(self, mode: str):
-        """Create Scatter trace object. Update the figure attribute. Requires that x and y attributes are set."""
-        scatter = go.Scatter(
+        self.figure = px.scatter(
+            self.data,
             x=self.x,
             y=self.y,
-            mode=mode,
-            marker=dict(
-                color=self.z,
-                colorscale='Viridis',
-                colorbar=dict(len=0.75, title=self.z.name),
-                showscale=True
-            ) if self.z is not None else None,  # z is not used as a spatial dimension, but as a color dimension.
-            name='Monitor',
-            text=self.data.hover_text,
+            color=self.z,
+            color_continuous_scale=px.colors.sequential.Viridis,
+            hover_data=self.labels,
         )
 
         if self.outliers is not None:
-            outliers = go.Scatter(
-                x=self.x[self.outliers],
-                y=self.y[self.outliers],
+            self.figure.add_scatter(
+                x=self.data[self.x][self.outliers],
+                y=self.data[self.y][self.outliers],
                 mode='markers',
-                marker=dict(color='red'),
+                marker=dict(color='red', opacity=0.7, size=8),
                 name='Outliers',
-                text=self.data.hover_text[self.outliers],
+                hovertext=self.data.hover_text[self.outliers],
+                hoverinfo='text'
             )
 
-            self.figure.add_traces([scatter, outliers])
+        self.figure.update_layout(
+            coloraxis_colorbar_len=0.8,
+            coloraxis_colorbar_yanchor='bottom',
+            coloraxis_colorbar_y=0
+        )
 
-        else:
-            self.figure.add_trace(scatter)
+    def basic_line(self):
+        """Create a line plot."""
+        self.figure = px.line(
+            self.data,
+            x=self.x,
+            y=self.y,
+            color=self.z,
+            hover_data=self.labels,
+        )
 
     def basic_image(self):
         """Create a heat-map plot and update the figure attribute. Requires that x, y and z attributes are set.
         z must be a 2D image.
         """
-        image_plot = go.Heatmap(
+        self.figure = px.density_heatmap(
+            self.data,
             x=self.x,
             y=self.y,
             z=self.z,
-            colorscale='Viridis',
-            zmin=0,
-            zmax=np.median(self.z),
-            zsmooth='best'
+            color_continuous_scale=px.colors.sequential.Viridis,
+            hover_data=self.labels,
         )
-
-        self.figure.add_trace(image_plot)
 
     def _store_in_db(self, results):
         if isinstance(results, Iterable):
