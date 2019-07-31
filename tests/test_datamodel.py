@@ -108,7 +108,3 @@ class TestDataModel:
 
         else:
             datamodel_test_instance.query_to_pandas(query)
-
-    def test_basemodel_init_fails(self):
-        with pytest.raises(TypeError):
-            BaseDataModel()
