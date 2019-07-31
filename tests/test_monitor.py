@@ -181,3 +181,7 @@ class TestMonitor:
 
         if monitor_test_instance.labels is not None:
             assert monitor_test_instance.data.hover_text[0] == 'a    A'
+
+    def test_init_basemonitor_fails(self):
+        with pytest.raises(TypeError):
+            BaseMonitor()
