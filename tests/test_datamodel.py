@@ -95,7 +95,7 @@ class TestDataModel:
         assert len(query) == 3
 
         # Check that the model columns are correct
-        assert list(datamodel_test_instance.model._meta.columns.keys()) == ['a', 'b', 'c']
+        assert sorted(datamodel_test_instance.model._meta.columns.keys()) == ['a', 'b', 'c']
 
     def test_ingest_fails(self, datamodel_test_instance):
         """Test that the table does not accept duplicates when a primary key is defined."""
