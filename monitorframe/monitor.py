@@ -271,7 +271,7 @@ class BaseMonitor(MonitorInterface):
                 mode='markers',
                 marker=dict(color='red', opacity=0.7, size=8),
                 name='Outliers',
-                hovertext=self.data.hover_text[self.outliers],
+                hovertext=self.data.hover_text[self.outliers] if 'hover_text' in self.data else None,
                 hoverinfo='text'
             )
 
