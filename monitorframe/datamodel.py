@@ -54,22 +54,23 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
 
     def __init__(self, find_new=True):
         self.new_data = None
+        self.model = None
         self.table_name = self.__class__.__name__
+
+        # Attempt to create a database table model
+        self._generate_model()
 
         # Read in and ingest new data
         if find_new:
             self.new_data = self.get_new_data()
 
-    @property
-    def model(self):
+    def _generate_model(self):
         """Return the database table model object if the table exists in the database."""
-        try:
-            return generate_models(
-                self._database, literal_column_names=True, table_names=[self.table_name]
-            )[self.table_name]
-
-        except KeyError:
-            return
+        if self._database.table_exists(self.table_name):
+            with self._database as db:
+                self.model = generate_models(
+                    db, literal_column_names=True, table_names=[self.table_name]
+                )[self.table_name]
 
     # noinspection PyUnresolvedReferences
     # noinspection PyCompatibility
@@ -77,8 +78,8 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
     @property
     def _array_types(self):
         """Find datatypes in the dataframe that are likely arrays of some kind."""
-        if self.new_data is not None:
-            supported = [list, np.ndarray]  # Supported array types
+        if self.new_data is not None and not self.new_data.empty:
+            supported = [list, np.ndarray, np.chararray]  # Supported array types
             example = self.new_data.iloc[0]  # All rows should be the same.. otherwise ingestion won't even get this far
 
             # Assuming that "object" types that aren't strings are arrays
@@ -96,7 +97,7 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
         """Format new data for ingest. Primarily, if there are arrays as elements in any column, convert those to
         strings.
         """
-        if self.new_data is not None:
+        if self.new_data is not None and not self.new_data.empty:
             if self._array_types:  # If there are array elements, convert to string. Else, do nothing
                 ingestible = self.new_data.copy()
 
@@ -111,6 +112,7 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
 
     def _set_primary_key(self):
         # Create SQL command based on dataframe
+        # noinspection PyUnresolvedReferences
         insert = pd.io.sql.get_schema(self._formatted_data, self.table_name)
 
         # Find where the pimary key is in the sql string
@@ -139,7 +141,12 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
 
         # Insert the dataframe into the database
         with self._database as db:
-            self._formatted_data.to_sql(self.table_name, db, if_exists='append', index=False)
+            if self._formatted_data is not None:
+                self._formatted_data.to_sql(self.table_name, db, if_exists='append', index=False)
+
+        # If the model wasn't created due to the table not existing, create the model.
+        if self.model is None:
+            self._generate_model()
 
     def query_to_pandas(self, query: peewee.ModelSelect, array_cols: list = None, array_dtypes: list = None
                         ) -> pd.DataFrame:
@@ -156,8 +163,8 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
             # Convert array columns to numpy arrays. Assume the dtype should be a float if not specified
             for key, dtype in zip(array_cols, array_dtypes):
                 df[key] = df[key].apply(
-                    lambda x: np.array(x.strip('[]').split(', '), dtype=dtype) if ',' in x
-                    else np.array(x.strip('[]').split(), dtype=dtype)
+                    lambda x: np.array(x.strip('[]').replace("'", '').split(', '), dtype=dtype) if ',' in x
+                    else np.array(x.strip('[]').replace("'", '').split(), dtype=dtype)
                 )
 
         return df
