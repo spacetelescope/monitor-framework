@@ -13,8 +13,8 @@ Running the monitoring steps manually
 If there is a need to run the monitoring steps manually, ``BaseMonitor`` includes the following methods that can be
 called independently:
 
-- ``initialize_data``: retrieve data defined by the data model, set plotting parameters, set labels, filter data if a filter is defined.
-- ``run_analysis``: execute the track method, find outliers if defined, sets notification.
+- ``initialize_data``: retrieve data defined by the data model set the data attribute, set labels.
+- ``run_analysis``: execute the track method, find outliers if defined, set notifications.
 - ``plot``: plot the plotly figure object (creates the html output)
 - ``notify``: sends notification email
 
@@ -51,14 +51,13 @@ For example:
             recipients=['other@stsci.edu', 'other2@stsci.edu']  # recipients can also be a single string if there's only one
         )
 
+        plottype = 'line'
+        x = 'col1'
+        y = 'col2'
+
         def track(self):
             """Measure the mean of the first column"""
             return self.data.col1.mean()  # Remember that data is a pandas DataFrame!
-
-        def define_plot(self):
-            self.plottype = 'line'
-            self.x = self.data.col1
-            self.y = self.data.col2
 
         def set_notification(self):
             return f'The mean of col1 is {self.results}!'  # The return value of track is stored in the results attribute!
@@ -67,29 +66,52 @@ For example:
 
     ``set_notification`` should return a string.
 
-Database
---------
-``monitorframe`` provides support for and an interface to an SQLite database through the ``peewee`` ORM.
-To use the database support option, simply define a name (or path) for the database in ``database_config.py``:
+Databases
+---------
+``monitorframe`` provides support for and an interface to two SQLite databases through the ``peewee`` ORM.
+One of these databases is for storing monitor data, while the other is used for storing monitoring analysis results.
 
-.. code-block:: python
+To use the database support option, a ``yaml`` configuration file must be created:
 
-    # Contents of database_config.py
-    SETTINGS = {
-    'database': '/path/to/my/db/monitor.db',
-    }
+.. code-block:: yaml
 
-``SETTINGS`` will subsequently be used as arguments for defining the SQLite database.
+    # Monitor data database
+    data:
+      db_settings:
+        database: ''
+        pragmas:
+          journal_mode: 'wal'
+          foreign_keys: 1
+          ignore_check_constraints: 0
+          synchronous: 0
+
+    # Monitor status and results database
+    results:
+      db_settings:
+        database: ''
+        pragmas:
+          journal_mode: 'wal'
+          foreign_keys: 1
+          ignore_check_constraints: 0
+          synchronous: 0
+
+This configuration file should be set to an environment variable called ``MONITOR_CONFIG``.
+
+``SETTINGS`` will subsequently be used as arguments for defining the SQLite databases.
 
 ``peewee`` has additional arguments available for tweaking seen
 `here <http://docs.peewee-orm.com/en/latest/peewee/database.html#using-sqlite>`_.
 
-If the database has been defined, it will automatically be created if it doesn't exist, or modified if it does.
-Each monitor that is defined will automatically create a database table based on the name of the monitor::
+If the databases have been defined, they will automatically be created if they don't exist, or modified if they do.
+Each DataModel will automatically create a database table when the ``ingest`` method is called.
+Each monitor that is defined will automatically create a database table based on the name of the
+monitor if the ``store_results`` method is called (with the default method)::
 
-    class, MyMonitor -> database table name, "MyMonitor"
+    class, MyMonitor -> results database table name, "MyMonitor"
 
-This table is defined with two columns:
+    class, MyDataModel -> data database table name, "MyDataModel"
+
+The results table is defined with two columns:
     1. ``Datetime``
     2. ``Result``
 
@@ -129,6 +151,8 @@ For more information on pandas' ``to_json`` method, see
 Python's JSON encoder and decoder, see `their documentation <https://docs.python.org/3/library/json.html>`_.
 
 .. _custom-storage:
+
+The data database columns are defined based on the data recovered by the ``get_new_data`` method.
 
 Storing and accessing results
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -208,30 +232,8 @@ The basic plotting functionality of ``BaseMonitor`` restricts the dimensionality
 basic after all).
 
 The third dimension is a *color* dimension supports either an array of the same shape as ``x`` and ``y``.
-To specify a color dimension to the data, simply set the ``z`` attribute in ``define_plot``:
-
-.. code-block:: python
-
-    def define_plot(self):
-        self.plottype = 'scatter'
-        self.x = self.data.col1  # [1, 2 ,3]
-        self.y = self.data.col2  # [4, 5, 6]
-
-        # If the color dimension is included in the data as col3:
-        self.z = self.data.col3
-
-        # If the color dimension is not included in the data, but based on some analysis
-        self.z = some_color_array  # must be the same length as x and y
-
-The third dimension can also be used to create an image plot:
-
-.. code-block:: python
-
-    def define_plot(self):
-        self.plottype = 'image'
-        self.x = self.data.col1
-        self.y = self.data.col2
-        self.z = image_array  # 2d image array of shape (y.shape, x.shape)
+To specify a color dimension to the data, simply set the ``z`` attribute.
+The third dimension can also be used to create an image plot.
 
 Adding additional information to the hover labels
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -244,7 +246,7 @@ data point, ``get_data`` would need to be modified like so:
 .. code-block:: python
 
     class MyNewModel(BaseDataModel):
-        def get_data(self):
+        def get_new_ata(self):
             reuturn {
                 'col1': [1, 2, 3],
                 'col2': [4, 5, 6],
@@ -259,14 +261,13 @@ In the definition of the monitor, the new "names" column would need to be identi
         data_model = MyNewModel
         labels = ['names']  # List of column names in data that should be used in hover labels
 
+        plottype = 'line'
+        x = 'col1'
+        y = 'col2'
+
         def track(self):
             """Measure the mean of the first column"""
             return self.data.col1.mean()  # Remember that data is a pandas DataFrame!
-
-        def define_plot(self):
-            self.plottype = 'line'
-            self.x = self.data.col1
-            self.y = self.data.col2
 
 This will add each "name" to the corresponding point in the hover labels in the plotly figure.
 
