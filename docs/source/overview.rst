@@ -6,10 +6,12 @@ The ``monitorframe`` framework consists of two components:
 2. monitor
 
 
-Data Model
+DataModel
 ----------
-The data model defines the source of the data for the monitor.
-Data that is collected via the data model will be converted to a pandas ``DataFrame``.
+The ``DataModel`` defines the source of the data for the monitor, how that data is collected, and defines an interface to
+the database backend for the set of data defined by the DataModel.
+Data that is collected via the data model will be converted to a pandas ``DataFrame``, and methods are included for
+ingesting the new data that's collected into an SQlite3 database.
 
 Monitor
 -------
@@ -20,18 +22,31 @@ Database Support
 ----------------
 Database support is provided via ``peewee``, but this is entirely optional and other storage options can be used (or
 not).
-Currently the only database type that is supported is SQLite.
 
-To use database support, the ``SETTINGS`` variable should be updated in ``database_config.py``.
-``SETTINGS`` is a dictionary that defines the arguments used for creating a SQLite database as explained in
-`peewee's documentation <http://docs.peewee-orm.com/en/latest/peewee/sqlite_ext.html#getting-started>`_ in a dictionary.
+Currently the only database type that is supported by default is SQLite3.
 
-A very simple example of a configuration:
+To use database support, provide a database filename in those sections of the configuration file:
 
-.. code-block:: python
+.. code-block:: yaml
 
-    SETTINGS = dict(database='mydb.db')
+    # Monitor data database
+    data:
+     db_settings:
+       database: 'my_database.db'
+       pragmas:
+         journal_mode: 'wal'
+         foreign_keys: 1
+         ignore_check_constraints: 0
+         synchronous: 0
 
-If a database is configured, each monitor that is defined will have a corresponding table defined in the database
-automatically.
-Monitoring results (defined by the user per monitor) will be stored in the corresponding table.
+Additionally, SQLite3 pragma statements can be defined to further customize the database.
+
+For more information on the configuration of the database and pragama statements, check out
+`peewee's documentation <http://docs.peewee-orm.com/en/latest/peewee/sqlite_ext.html#getting-started>`_.
+
+If a database is configured, each DataModel that is defined will automatically create the database (if it doesn't
+exist), as well as a corresponding table in that database (again, if it doesn't exist) when the ``ingest`` method is
+called.
+
+For the monitoring results database, creation of the database and corresponding table is done automatically as with the
+DataModel database when the ``store_results`` method is called.

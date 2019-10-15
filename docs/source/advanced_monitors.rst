@@ -1,27 +1,30 @@
 Advanced Monitor Options
 ========================
 In :doc:`creating_monitors` we outlined how to create a very simple monitor that produces a simple plot.
-In this section we will dive into options available for creating a more complex monitor.
+In this section we will dive into options available for creating a more complex Monitor.
 
 .. note::
 
-    There are no further options for creating new data models, and so the previous section should be referenced for
-    the creation of new data models.
+    There are no further options for creating DataModels, and so the previous section should be referenced for
+    the creation of new DataModels.
 
 Running the monitoring steps manually
 -------------------------------------
 If there is a need to run the monitoring steps manually, ``BaseMonitor`` includes the following methods that can be
 called independently:
 
-- ``initialize_data``: retrieve data defined by the data model set the data attribute, set labels.
+- ``initialize_data``: retrieve data defined by the data model set the data attribute, create hover text.
 - ``run_analysis``: execute the track method, find outliers if defined, set notifications.
-- ``plot``: plot the plotly figure object (creates the html output)
-- ``notify``: sends notification email
+- ``plot``: create the plotly figure (creates the html output)
+- ``write_figure``: save the plotly figure to an html file.
+- ``notify``: send notifications
 
 .. note::
 
-    If the monitoring steps are run individually, ``initialize_data`` must be executed first, followed by
-    ``run_analysis``.
+    If the monitoring steps are run individually, they must be executed in logical order.
+    For example, ``initialize_data`` must be executed first, followed by ``run_analysis`` if the intent is to only
+    execute the analysis portion of the monitor.
+
 
 Notifications
 -------------
@@ -68,48 +71,43 @@ For example:
 
 Databases
 ---------
-``monitorframe`` provides support for and an interface to two SQLite databases through the ``peewee`` ORM.
-One of these databases is for storing monitor data, while the other is used for storing monitoring analysis results.
+``monitorframe`` provides support for and an interface to two SQLite databases through the ``peewee`` ORM with
+one of these databases is for storing monitor data, while the other is used for storing monitoring analysis results.
+Each of these databases are created automatically when configured, and tables for those databases are also automatically
+created when the ingestion methods are called (``ingest`` for a DataModel and ``store_results`` for a Monitor).
 
-To use the database support option, a ``yaml`` configuration file must be created:
+The configuration of these databases is discussed in :doc:`overview`.
 
-.. code-block:: yaml
+DataModel Database
+^^^^^^^^^^^^^^^^^^
+The main difference between the DataModel database and the Monitor results database is that while the Monitor results
+database is pre-defined (although broadly), the DataModel database is *not*.
+The table is constructed based on the input data, which means that each DataModel can have completely different sets of
+columns.
 
-    # Monitor data database
-    data:
-      db_settings:
-        database: ''
-        pragmas:
-          journal_mode: 'wal'
-          foreign_keys: 1
-          ignore_check_constraints: 0
-          synchronous: 0
+This type of implementation does have a drawback though: due to the dynamic nature of how tables are defined, it's
+possible to have unintended consequences in how the data is ingested.
+In particular, it's possible to have duplicate entries.
 
-    # Monitor status and results database
-    results:
-      db_settings:
-        database: ''
-        pragmas:
-          journal_mode: 'wal'
-          foreign_keys: 1
-          ignore_check_constraints: 0
-          synchronous: 0
+To protect against this issue, it's recommended that DataModels are defined with a ``primary_key`` attribute.
+This will prevent duplicate entries from being added to the database (an example of this is included in the
+:doc:`creating_monitors` section).
 
-This configuration file should be set to an environment variable called ``MONITOR_CONFIG``.
+Once the DataModel's database and table exist, the DataModel's ``model`` attribute can be utilized.
+The ``model`` attribute is a ``peewee.Model`` object that represents the DataModel's table and can be used to query the
+data stored there.
 
-``SETTINGS`` will subsequently be used as arguments for defining the SQLite databases.
+Users can take advantage of the DataModel's ``model`` attribute when implementing a Monitor's ``get_data`` method.
 
-``peewee`` has additional arguments available for tweaking seen
-`here <http://docs.peewee-orm.com/en/latest/peewee/database.html#using-sqlite>`_.
+For examples of querying and filtering, see
+`peewee's Querying section <http://docs.peewee-orm.com/en/latest/peewee/querying.html#selecting-multiple-records>`_.
 
-If the databases have been defined, they will automatically be created if they don't exist, or modified if they do.
-Each DataModel will automatically create a database table when the ``ingest`` method is called.
-Each monitor that is defined will automatically create a database table based on the name of the
+Monitor Results Database
+^^^^^^^^^^^^^^^^^^^^^^^^
+Each Monitor that is defined will automatically create a database table based on the name of the
 monitor if the ``store_results`` method is called (with the default method)::
 
     class, MyMonitor -> results database table name, "MyMonitor"
-
-    class, MyDataModel -> data database table name, "MyDataModel"
 
 The results table is defined with two columns:
     1. ``Datetime``
@@ -155,7 +153,7 @@ Python's JSON encoder and decoder, see `their documentation <https://docs.python
 The data database columns are defined based on the data recovered by the ``get_new_data`` method.
 
 Storing and accessing results
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.............................
 ``BaseMonitor`` does provide a "default" attempt at storing the results, but for more complicated results (or just for
 more custom storage), a ``format_results`` method must be implemented.
 
@@ -172,16 +170,16 @@ Building off of the previous ``MyMonitor`` example:
 
         return results
 
-The new entry will be created on execution, and if format_results has been implemented, that resulting object will be
-used.
+The new entry will be created on execution, and if ``format_results`` has been implemented, that resulting object will
+be used.
 
-To query the Monitor's table for a specific result, ``query`` and the table's column definitions (which are used in
-querying) are available as attributes:
+To query the Monitor's table for a specific result, ``results_table`` and the table's column definitions
+(which are used in querying) are available as attributes:
 
 .. code-block:: python
 
     monitor = MyMonitor()
-    query_results = monitor.query  # Returns all results as a peewee ModelSelect object
+    query_results = monitor.results_table  # Returns all results as a peewee ModelSelect object
 
     # Further querying
     more_specific = query_results.where(monitor.datetime_col == '2019-04-23T14:07:03.500365')
@@ -191,8 +189,9 @@ querying) are available as attributes:
 
 .. note::
 
-    If a Monitor has been defined, but has not been executed, the database table for that monitor will not exist yet.
-    In this case, ``get_table`` will return ``None`` and print a message with this information.
+    If a Monitor has been defined, but has not been executed (specifically the ``store_results`` method), the database
+    table for that monitor will not exist yet.
+    In this case, the ``results_table`` property will be ``None``.
 
 For information on how to perform queries, see
 `peewee's documentation <http://docs.peewee-orm.com/en/latest/peewee/querying.html#selecting-multiple-records>`_.
@@ -246,7 +245,7 @@ data point, ``get_data`` would need to be modified like so:
 .. code-block:: python
 
     class MyNewModel(BaseDataModel):
-        def get_new_ata(self):
+        def get_new_data(self):
             reuturn {
                 'col1': [1, 2, 3],
                 'col2': [4, 5, 6],
@@ -273,7 +272,7 @@ This will add each "name" to the corresponding point in the hover labels in the 
 
 More complex plotting
 ^^^^^^^^^^^^^^^^^^^^^
-For more complex plotting, ``plot`` should be overridden with whatever is needed, but plotly is still required.
+For more complex plotting, ``plot`` should be overridden with whatever is needed, but ``plotly`` is still required.
 
 When a new instance of a monitor is created, a plotly figure is created automatically.
 
@@ -293,20 +292,20 @@ When a new instance of a monitor is created, a plotly figure is created automati
             subplot_layout = (2, 2)  # 2x2 grid of plots
 
 
-The ``plot`` method should add whatever *traces* (plotly's term) and *layouts* necessary to that monitor figure
+The ``plot`` method should add whatever *traces* (``plotly``'s term) and *layouts* necessary to that monitor figure
 attribute:
 
 .. code-block:: python
 
     def plot(self):
 
-        ...  # Lot's of complicated plotting stuff that results in a "plot" object and a new "layout" object
+        ...  # Lot's of complicated plotting stuff that results in a "plot" trace object and a new layout object
 
         self.figure.add_trace(plot)
         self.figure['layout'].update(layout)
 
-If users want to integrate existing matplotlib plots without have to rewrite the entire plot, plotly's ``mpl_to_plotly``
-function can be used:
+If users want to integrate existing matplotlib plots without have to rewrite the entire plot, ``plotly``'s
+``mpl_to_plotly`` function can be used:
 
 .. code-block:: python
 
@@ -331,7 +330,8 @@ with the ``write_figure`` method:
 Finding Outliers
 ----------------
 If part of the monitor is to locate outliers, then the ``find_outliers`` method must be implemented.
-This method should return a *mask* array that can be used with the ``data`` attribute of the monitor.
+This method should return a *mask* array that can be used with the ``data`` attribute of the Monitor if the user intends
+to use the basic plotting functionality, but otherwise can return whatever is needed.
 
 Outliers will be accessible via the ``outliers`` attribute of the monitor.
 When using the basic plotting functionality, outliers will automatically be plotted in red, but for more advanced
