@@ -9,6 +9,8 @@ RESULTS_DB_SETTINGS = SETTINGS['results']['db_settings']
 DATA_DB = SqliteExtDatabase(**DATA_DB_SETTINGS)
 RESULTS_DB = SqliteExtDatabase(**RESULTS_DB_SETTINGS)
 
+# TODO: Add outliers table
+
 
 class BaseResultsModel(Model):
 
