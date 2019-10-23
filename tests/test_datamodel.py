@@ -119,9 +119,9 @@ class TestDataModel:
         query = datamodel_test_instance.model.select()
 
         if datamodel_test_instance._array_types:
-            # Check that the converted columns are floats by default
+            # Check that the converted columns are left as strings by default
             df = datamodel_test_instance.query_to_pandas(query, ['c'])
-            assert (type(df.c[0]) == list or type(df.c[0]) == np.ndarray) and type(df.c[0][0]) == np.float64
+            assert (type(df.c[0]) == list or type(df.c[0]) == np.ndarray) and type(df.c[0][0]) == np.unicode_
 
             # Check that the columns are converted into the specified dtype successfully
             df = datamodel_test_instance.query_to_pandas(query, ['c'], [int])
