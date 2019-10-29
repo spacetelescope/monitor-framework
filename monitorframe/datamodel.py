@@ -142,7 +142,8 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
         # Insert the dataframe into the database
         with self._database as db:
             if self._formatted_data is not None:
-                self._formatted_data.to_sql(self.table_name, db, if_exists='append', index=False)
+                dtypes = {key: 'BLOB' for key in self._array_types}
+                self._formatted_data.to_sql(self.table_name, db, if_exists='append', index=False, dtype=dtypes)
 
         # If the model wasn't created due to the table not existing, create the model.
         if self.model is None:
