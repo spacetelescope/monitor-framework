@@ -24,8 +24,26 @@ NEW_DATA_WITH_NPARRAY = {
     'c': [np.array([7, 8, 9]), np.array([10, 11, 12]), np.array([13, 14, 15])]
 }
 
+NEW_DATA_WITH_floats = {
+    'a': [1, 2, 3],
+    'b': [4, 5, 6],
+    'c': [[1.123, 2.234, -3.345], [1.123, 2.234, -3.345], [1.123, 2.234, -3.345]]
+}
 
-@pytest.fixture(params=[NEW_DATA, NEW_DATA_WITH_LIST, NEW_DATA_WITH_NPARRAY])
+NEW_DATA_WITH_bytestr = {
+    'a': [1, 2, 3],
+    'b': [4, 5, 6],
+    'c': [[b'a', b'b', b'c'], [b'd', b'e', b'f'], [b'g', b'h', b'i']]
+}
+
+NEW_DATA_NO_ARRAYS = {
+    'a': [1, 2, 3],
+    'b': [4, 5, 6],
+    'c': [7, 8, 9]
+}
+
+
+@pytest.fixture(params=[NEW_DATA, NEW_DATA_WITH_LIST, NEW_DATA_WITH_NPARRAY, NEW_DATA_WITH_floats, NEW_DATA_WITH_bytestr, NEW_DATA_NO_ARRAYS])
 def datamodel_test_instance(request):
     """Test fixture that creates a datamodel object (from BaseDataModel) using the different data configurations in
     NEW_DATA, NEW_DATA_WITH_LIST, and NEW_DATA_WITH_NPARRAY. This fixture also includes a clean-up if a database table
@@ -119,13 +137,12 @@ class TestDataModel:
         query = datamodel_test_instance.model.select()
 
         if datamodel_test_instance._array_types:
-            # Check that the converted columns are floats by default
-            df = datamodel_test_instance.query_to_pandas(query, ['c'])
-            assert (type(df.c[0]) == list or type(df.c[0]) == np.ndarray) and type(df.c[0][0]) == np.float64
+            # Check that the query can be converted
+            datamodel_test_instance.query_to_pandas(query, ['c'])
 
             # Check that the columns are converted into the specified dtype successfully
-            df = datamodel_test_instance.query_to_pandas(query, ['c'], [int])
-            assert (type(df.c[0]) == list or type(df.c[0]) == np.ndarray) and type(df.c[0][0]) == np.int64
+            df = datamodel_test_instance.query_to_pandas(query, ['c'], [str])
+            assert (type(df.c[0]) == list or type(df.c[0]) == np.ndarray) and type(df.c[0][0]) == np.unicode_
 
         else:
             # Check that the query is converted without array elements
