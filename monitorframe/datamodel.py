@@ -102,7 +102,7 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
                 ingestible = self.new_data.copy()
 
                 for key in self._array_types:
-                    ingestible[key] = ingestible[key].astype(np.unicode_)
+                    ingestible[key] = ingestible[key].apply(lambda x: repr(list(x)))
 
                 return ingestible
 
@@ -162,9 +162,6 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
 
             # Convert array columns to numpy arrays. Leave as string if not specified
             for key, dtype in zip(array_cols, array_dtypes):
-                df[key] = df[key].apply(
-                    lambda x: np.array(x.strip('[]').replace("'", '').split(', '), dtype=dtype) if ',' in x
-                    else np.array(x.strip('[]').replace("'", '').split(), dtype=dtype)
-                )
+                df[key] = df[key].apply(lambda x: np.array(eval(x), dtype=dtype))
 
         return df
