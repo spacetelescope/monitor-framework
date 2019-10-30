@@ -167,5 +167,6 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
         if array_cols:
             for key in array_cols:
                 df[key] = df.apply(lambda x: np.array(ast.literal_eval(x[key]), dtype=x[f'{key}_dtype']), axis=1)
+                df.drop(f'{key}_dtype', axis=1, inplace=True)
 
         return df

@@ -131,6 +131,7 @@ class TestDataModel:
         """Test the query to pandas method."""
         datamodel_test_instance.ingest()
         query = datamodel_test_instance.model.select()
+        comparison = datamodel_test_instance._formatted_data
 
         if datamodel_test_instance._array_types:
             # Check that the query can be converted
@@ -140,7 +141,11 @@ class TestDataModel:
             for key in TEST_ARRAY_KEYS:
                 value = NEW_DATA_WITH_ARRAYS[key]
 
-                assert (type(df.loc[0, key]) == np.ndarray) and df.loc[0, key].dtype == df.loc[0, f'{key}_dtype']
+                assert (
+                        type(df.loc[0, key]) == np.ndarray and
+                        df.loc[0, key].dtype == comparison.loc[0, f'{key}_dtype']
+                )
+
                 assert np.array_equal(df.loc[0, key], np.array(value[0]))
 
         else:
