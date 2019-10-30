@@ -1,9 +1,9 @@
 import abc
+import ast
 import numpy as np
 import pandas as pd
 import peewee
 
-from itertools import repeat
 from playhouse.reflection import generate_models
 from typing import List, Dict, Union
 
@@ -98,11 +98,19 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
         strings.
         """
         if self.new_data is not None and not self.new_data.empty:
-            if self._array_types:  # If there are array elements, convert to string. Else, do nothing
+            # If there are array elements, convert those into byte-strings
+            if self._array_types:
                 ingestible = self.new_data.copy()
 
                 for key in self._array_types:
-                    ingestible[key] = ingestible[key].apply(lambda x: repr(list(x)))
+                    dtypes = []
+
+                    for i, row in self.new_data.iterrows():
+                        dtypes.append(str(np.array(row[key]).dtype))
+
+                        ingestible.loc[i, key] = repr(list(row[key]))
+
+                    ingestible[f'{key}_dtype'] = dtypes
 
                 return ingestible
 
@@ -142,27 +150,22 @@ class BaseDataModel(DataInterface, metaclass=PandasMeta):
         # Insert the dataframe into the database
         with self._database as db:
             if self._formatted_data is not None:
-                dtypes = {key: 'BLOB' for key in self._array_types}
-                self._formatted_data.to_sql(self.table_name, db, if_exists='append', index=False, dtype=dtypes)
+                self._formatted_data.to_sql(self.table_name, db, if_exists='append', index=False)
 
         # If the model wasn't created due to the table not existing, create the model.
         if self.model is None:
             self._generate_model()
 
-    def query_to_pandas(self, query: peewee.ModelSelect, array_cols: list = None, array_dtypes: list = None
-                        ) -> pd.DataFrame:
+    def query_to_pandas(self, query: peewee.ModelSelect, array_cols: list = None) -> pd.DataFrame:
         """Convert a model query to a pandas dataframe."""
         df = pd.DataFrame(query.dicts())
 
         if not array_cols:
             array_cols = self._array_types  # Try to use the new data to infer what the format should be
 
+        # Convert array columns to numpy arrays. Leave as string if not specified
         if array_cols:
-            if not array_dtypes:
-                array_dtypes = repeat(None, len(array_cols))
-
-            # Convert array columns to numpy arrays. Leave as string if not specified
-            for key, dtype in zip(array_cols, array_dtypes):
-                df[key] = df[key].apply(lambda x: np.array(eval(x), dtype=dtype))
+            for key in array_cols:
+                df[key] = df.apply(lambda x: np.array(ast.literal_eval(x[key]), dtype=x[f'{key}_dtype']), axis=1)
 
         return df
