@@ -12,38 +12,19 @@ NEW_DATA = {
     'c': [7, 8, 9]
 }
 
-NEW_DATA_WITH_LIST = {
+NEW_DATA_WITH_ARRAYS = {
     'a': [1, 2, 3],
     'b': [4, 5, 6],
-    'c': [[7, 8, 9], [10, 11, 12], [13, 14, 15]]
+    'list_arr': [[7, 8, 9], [10, 11, 12], [13, 14, 15]],
+    'np_arr': [np.array([7, 8, 9]), np.array([10, 11, 12]), np.array([13, 14, 15])],
+    'floats': [[1.123, 2.234, -3.345], [1.123, 2.234, -3.345], [1.123, 2.234, -3.345]],
+    'bytestr': [[b'a', b'b', b'c'], [b'd', b'e', b'f'], [b'g', b'h', b'i']]
 }
 
-NEW_DATA_WITH_NPARRAY = {
-    'a': [1, 2, 3],
-    'b': [4, 5, 6],
-    'c': [np.array([7, 8, 9]), np.array([10, 11, 12]), np.array([13, 14, 15])]
-}
-
-NEW_DATA_WITH_floats = {
-    'a': [1, 2, 3],
-    'b': [4, 5, 6],
-    'c': [[1.123, 2.234, -3.345], [1.123, 2.234, -3.345], [1.123, 2.234, -3.345]]
-}
-
-NEW_DATA_WITH_bytestr = {
-    'a': [1, 2, 3],
-    'b': [4, 5, 6],
-    'c': [[b'a', b'b', b'c'], [b'd', b'e', b'f'], [b'g', b'h', b'i']]
-}
-
-NEW_DATA_NO_ARRAYS = {
-    'a': [1, 2, 3],
-    'b': [4, 5, 6],
-    'c': [7, 8, 9]
-}
+TEST_ARRAY_KEYS = ['list_arr', 'np_arr', 'floats', 'bytestr']
 
 
-@pytest.fixture(params=[NEW_DATA, NEW_DATA_WITH_LIST, NEW_DATA_WITH_NPARRAY, NEW_DATA_WITH_floats, NEW_DATA_WITH_bytestr, NEW_DATA_NO_ARRAYS])
+@pytest.fixture(params=[NEW_DATA, NEW_DATA_WITH_ARRAYS])
 def datamodel_test_instance(request):
     """Test fixture that creates a datamodel object (from BaseDataModel) using the different data configurations in
     NEW_DATA, NEW_DATA_WITH_LIST, and NEW_DATA_WITH_NPARRAY. This fixture also includes a clean-up if a database table
@@ -76,23 +57,20 @@ class TestDataModel:
 
     def test_find_array_types(self, datamodel_test_instance):
         """Test that the array column is found successfully."""
-        test_array_keys = ['c']
-
         if datamodel_test_instance._array_types:
-            assert datamodel_test_instance._array_types == test_array_keys
+            assert datamodel_test_instance._array_types == TEST_ARRAY_KEYS
 
         else:
             assert not datamodel_test_instance._array_types
 
     def test_ingest_format(self, datamodel_test_instance):
         """Test that for array columns, the elements are converted into strings."""
-        test_array_keys = ['c']
 
         if datamodel_test_instance._array_types:
-            for key in test_array_keys:
+            for key in TEST_ARRAY_KEYS:
                 assert (
-                               datamodel_test_instance._formatted_data[key].dtypes == 'O' and
-                               type(datamodel_test_instance._formatted_data[key][0]) == str
+                        datamodel_test_instance._formatted_data[key].dtypes == 'O' and
+                        type(datamodel_test_instance._formatted_data[key][0]) == str
                 )
 
         else:
@@ -110,10 +88,28 @@ class TestDataModel:
 
         # Check that a peewee model can be constructed and queried
         query = list(datamodel_test_instance.model.select().dicts())
+
         assert len(query) == 3
 
         # Check that the model columns are correct
-        assert sorted(datamodel_test_instance.model._meta.columns.keys()) == ['a', 'b', 'c']
+        if datamodel_test_instance._array_types:
+            expected = [
+                'a',
+                'b',
+                'bytestr',
+                'bytestr_dtype',
+                'floats',
+                'floats_dtype',
+                'list_arr',
+                'list_arr_dtype',
+                'np_arr',
+                'np_arr_dtype'
+            ]
+
+            assert sorted(datamodel_test_instance.model._meta.columns.keys()) == expected
+
+        else:
+            assert sorted(datamodel_test_instance.model._meta.columns.keys()) == ['a', 'b', 'c']
 
     def test_ingest_fails(self, datamodel_test_instance):
         """Test that the table does not accept duplicates when a primary key is defined."""
@@ -135,15 +131,24 @@ class TestDataModel:
         """Test the query to pandas method."""
         datamodel_test_instance.ingest()
         query = datamodel_test_instance.model.select()
+        comparison = datamodel_test_instance._formatted_data
 
         if datamodel_test_instance._array_types:
             # Check that the query can be converted
-            datamodel_test_instance.query_to_pandas(query, ['c'])
+            df = datamodel_test_instance.query_to_pandas(query, TEST_ARRAY_KEYS)
 
             # Check that the columns are converted into the specified dtype successfully
-            df = datamodel_test_instance.query_to_pandas(query, ['c'], [str])
-            assert (type(df.c[0]) == list or type(df.c[0]) == np.ndarray) and type(df.c[0][0]) == np.unicode_
+            for key in TEST_ARRAY_KEYS:
+                value = NEW_DATA_WITH_ARRAYS[key]
+
+                assert (
+                        type(df.loc[0, key]) == np.ndarray and
+                        df.loc[0, key].dtype == comparison.loc[0, f'{key}_dtype']
+                )
+
+                assert np.array_equal(df.loc[0, key], np.array(value[0]))
 
         else:
             # Check that the query is converted without array elements
-            datamodel_test_instance.query_to_pandas(query)
+            query_df = datamodel_test_instance.query_to_pandas(query)
+            assert query_df.equals(datamodel_test_instance.new_data)
