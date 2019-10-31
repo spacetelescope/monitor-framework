@@ -13,7 +13,7 @@ setup_parameters = dict(
 
 setup(
     name='monitorframe',  # Required
-    version='1.1.1',  # Required
+    version='1.2.0',  # Required
     description='Framework for building instrument monitors.',  # Required
     author='James White; Space Telescope Science Institute',
     author_email='jwhite@stsci.edu',
