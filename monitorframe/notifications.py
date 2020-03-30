@@ -30,15 +30,14 @@ class Email(EmailInterface):
     def _set_recipients(recipients_input):
         """Set recipient or format list of recipients."""
         if isinstance(recipients_input, Iterable):
-            return ''.join(recipients_input)
+            return ', '.join(recipients_input)
 
-        elif isinstance(recipients_input, str):
+        if isinstance(recipients_input, str):
             return recipients_input
 
-        else:
-            raise TypeError(
-                f'recipients must be either iterable or a string. Recieved {type(recipients_input)} instead.'
-            )
+        raise TypeError(
+            f'recipients must be either iterable or a string. Recieved {type(recipients_input)} instead.'
+        )
 
     def build_message(self) -> MIMEText:
         """Create MIMEText object."""
