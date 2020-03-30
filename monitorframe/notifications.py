@@ -2,7 +2,7 @@ import abc
 import smtplib
 
 from email.mime.text import MIMEText
-from typing import Union, Iterable
+from typing import Union
 
 
 class EmailInterface(abc.ABC):
@@ -29,14 +29,14 @@ class Email(EmailInterface):
     @staticmethod
     def _set_recipients(recipients_input):
         """Set recipient or format list of recipients."""
-        if isinstance(recipients_input, Iterable):
+        if isinstance(recipients_input, list):
             return ', '.join(recipients_input)
 
         if isinstance(recipients_input, str):
             return recipients_input
 
         raise TypeError(
-            f'recipients must be either iterable or a string. Recieved {type(recipients_input)} instead.'
+            f'recipients must either be a list or a string. Recieved {type(recipients_input)} instead.'
         )
 
     def build_message(self) -> MIMEText:
